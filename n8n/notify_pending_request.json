@@ -1,0 +1,38 @@
+{
+  "name": "Notify Advisor of New Request",
+  "nodes": [
+    {
+      "id": "webhook",
+      "type": "n8n-nodes-base.webhook",
+      "position": [200, 300],
+      "parameters": {
+        "path": "request-notification",
+        "httpMethod": "POST"
+      }
+    },
+    {
+      "id": "sendEmail",
+      "type": "n8n-nodes-base.emailSend",
+      "position": [400, 300],
+      "parameters": {
+        "fromEmail": "noreply@university.edu",
+        "toEmail": "{{ $json[\"advisorEmail\"] }}",
+        "subject": "New registration request",
+        "text": "A new registration request has been submitted by {{ $json[\"studentName\"] }}. Please log in to review."
+      }
+    }
+  ],
+  "connections": {
+    "webhook": {
+      "main": [
+        [
+          {
+            "node": "sendEmail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
