@@ -1,9 +1,3 @@
-# BRS Prototype Docker Compose Configuration
-# This file reads environment variables from .env file in the same directory
-# Make sure to copy .env.example to .env and configure your values
-
-version: '3.9'
-
 services:
   db:
     image: postgres:14

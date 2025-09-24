@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { checkSystemHealth, fetchRequests } from '../api.js';
+import { checkSystemHealth } from '../api.js';
+import LoadingIndicator from './LoadingIndicator.jsx';
 
 // Helper function to convert markdown to HTML
 function formatAIResponse(content) {
@@ -149,7 +150,12 @@ export default function AdvisorChatBot({ user }) {
                 },
                 body: JSON.stringify({
                     message: originalMessage,
-                    advisor_id: user.id
+                    advisor_id: user.id,
+                    conversation_history: messages.map(msg => ({
+                        type: msg.type,
+                        content: msg.content,
+                        timestamp: msg.timestamp
+                    }))
                 }),
             });
 
@@ -285,15 +291,9 @@ export default function AdvisorChatBot({ user }) {
                             backgroundColor: '#f8f9fa',
                             border: '1px solid #e9ecef',
                             color: '#666',
-                            fontStyle: 'italic',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
+                            fontStyle: 'italic'
                         }}>
-                            <span>●</span>
-                            <span>●</span>
-                            <span>●</span>
-                            <span>Thinking...</span>
+                            <LoadingIndicator type="dots" text="Analyzing requests..." />
                         </div>
                     </div>
                 )}
@@ -347,6 +347,54 @@ export default function AdvisorChatBot({ user }) {
                         }}
                     >
                         {isLoading ? 'Sending...' : 'Send'}
+                    </button>
+                </div>
+
+                {/* Quick Actions */}
+                <div style={{
+                    marginTop: '0.5rem',
+                    display: 'flex',
+                    gap: '0.5rem',
+                    flexWrap: 'wrap'
+                }}>
+                    <button
+                        onClick={() => setInputMessage('Show me all pending course requests')}
+                        style={{
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: '#f8f9fa',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Review Pending Requests
+                    </button>
+                    <button
+                        onClick={() => setInputMessage('Show me student enrollment statistics')}
+                        style={{
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: '#f8f9fa',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        View Student Stats
+                    </button>
+                    <button
+                        onClick={() => setInputMessage('Generate weekly report of course requests')}
+                        style={{
+                            padding: '0.25rem 0.5rem',
+                            backgroundColor: '#f8f9fa',
+                            border: '1px solid #ddd',
+                            borderRadius: '4px',
+                            fontSize: '0.875rem',
+                            cursor: 'pointer'
+                        }}
+                    >
+                        Generate Reports
                     </button>
                 </div>
             </div>

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { sendChatMessage, submitRequest, checkSystemHealth, fetchRequests } from '../api.js';
+import LoadingIndicator from './LoadingIndicator.jsx';
 
 // Helper function to convert markdown to HTML
 function formatAIResponse(content) {
@@ -37,41 +38,21 @@ export default function StudentChatBot({ user }) {
         scrollToBottom();
     }, [messages]);
 
+
+
     useEffect(() => {
-        // Check system health and student's request status
-        const checkHealthAndRequests = async () => {
+        // Check system health and show initial greeting
+        const checkHealthAndSetup = async () => {
             try {
                 const health = await checkSystemHealth();
                 setSystemHealth(health);
                 setAiConfigured(health.openai_configured);
 
-                // Check for student's requests
-                let requestStatusMessage = '';
-                try {
-                    const allRequests = await fetchRequests('all');
-                    const studentRequests = allRequests.filter(req => req.student_id === user.id);
-
-                    if (studentRequests.length > 0) {
-                        const pending = studentRequests.filter(req => req.status === 'pending').length;
-                        const approved = studentRequests.filter(req => req.status === 'approved').length;
-                        const rejected = studentRequests.filter(req => req.status === 'rejected').length;
-
-                        const statusParts = [];
-                        if (pending > 0) statusParts.push(`${pending} pending`);
-                        if (approved > 0) statusParts.push(`${approved} approved`);
-                        if (rejected > 0) statusParts.push(`${rejected} rejected`);
-
-                        requestStatusMessage = `\n\n📋 **Your Course Requests:**\nYou have ${statusParts.join(', ')} request${studentRequests.length > 1 ? 's' : ''}.\n\nAsk me "what's my request status?" for details.`;
-                    }
-                } catch (error) {
-                    console.error('Failed to fetch student requests:', error);
-                }
-
                 if (health.openai_configured) {
                     setMessages([
                         {
                             type: 'bot',
-                            content: `Hi ${user.full_name}! 👋 I'm your AI-powered academic assistant. I can help you manage your course enrollment.${requestStatusMessage}\n\n**Available Actions:**\n• View your current enrolled courses\n• Browse available courses and descriptions\n• Request to add courses (requires advisor approval)\n• Request to drop courses (requires advisor approval)\n• Check your course request status\n• Get course recommendations based on your major\n\nWhat would you like to do today?`,
+                            content: `Hi ${user.full_name}! 👋 I'm your AI-powered academic assistant. I can help you manage your course enrollment.\n\n**Available Actions:**\n• View your current enrolled courses\n• Browse available courses and descriptions\n• Request to add courses (requires advisor approval)\n• Request to drop courses (requires advisor approval)\n• Check your course request status\n• Get course recommendations based on your major\n\nWhat would you like to do today?`,
                             timestamp: new Date()
                         }
                     ]);
@@ -79,7 +60,7 @@ export default function StudentChatBot({ user }) {
                     setMessages([
                         {
                             type: 'bot',
-                            content: `Hi ${user.full_name}! I'm sorry, but the AI assistant is currently not available because the OpenAI API key is not configured. Please contact your system administrator to enable AI features, or use the traditional form interface by clicking "Traditional View" above.${requestStatusMessage}`,
+                            content: `Hi ${user.full_name}! I'm sorry, but the AI assistant is currently not available because the OpenAI API key is not configured. Please contact your system administrator to enable AI features, or use the traditional form interface by clicking "Traditional View" above.`,
                             timestamp: new Date(),
                             isError: true
                         }
@@ -99,7 +80,7 @@ export default function StudentChatBot({ user }) {
             }
         };
 
-        checkHealthAndRequests();
+        checkHealthAndSetup();
     }, [user.full_name]); const handleSendMessage = async () => {
         if (!inputValue.trim() || isLoading) return;
 
@@ -310,15 +291,9 @@ export default function StudentChatBot({ user }) {
                             backgroundColor: '#f8f9fa',
                             border: '1px solid #e9ecef',
                             color: '#666',
-                            fontStyle: 'italic',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
+                            fontStyle: 'italic'
                         }}>
-                            <span>●</span>
-                            <span>●</span>
-                            <span>●</span>
-                            <span>Thinking...</span>
+                            <LoadingIndicator type="dots" text="Thinking..." />
                         </div>
                     </div>
                 )}

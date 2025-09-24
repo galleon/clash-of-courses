@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { checkSystemHealth } from '../api.js';
+import LoadingIndicator from './LoadingIndicator.jsx';
 
 // Helper function to convert markdown to HTML
 function formatAIResponse(content) {
@@ -284,15 +285,9 @@ export default function AdminChatBot({ user }) {
                             backgroundColor: '#f8f9fa',
                             border: '1px solid #e9ecef',
                             color: '#666',
-                            fontStyle: 'italic',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.5rem'
+                            fontStyle: 'italic'
                         }}>
-                            <span>●</span>
-                            <span>●</span>
-                            <span>●</span>
-                            <span>Thinking...</span>
+                            <LoadingIndicator type="dots" text="Analyzing system..." />
                         </div>
                     </div>
                 )}

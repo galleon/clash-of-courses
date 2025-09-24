@@ -14,11 +14,21 @@ assistance.
 
 ```
 brs_prototype/
-├── backend/           – FastAPI application, database models and seed script
-├── database/          – SQL schema definitions
-├── frontend/          – Unified React UI for all roles (students, advisors, department heads, system administrators)
-├── n8n/               – Example n8n workflow definitions
-└── README.md          – You are here
+├── backend/           # FastAPI application with modular structure
+│   ├── brs_backend/   # Main application module
+│   │   ├── main.py    # FastAPI app entry point
+│   │   ├── core/      # Configuration and logging
+│   │   ├── database/  # Database connection
+│   │   ├── models/    # SQLAlchemy models
+│   │   ├── agents/    # AI agents and tools
+│   │   ├── api/       # REST API endpoints
+│   │   └── seed_personas.py # Database seeding
+│   ├── entrypoint.sh  # Docker container startup
+│   └── README.md      # Backend documentation
+├── database/          # SQL schema definitions
+├── frontend/          # Unified React UI for all roles
+├── n8n/               # Example n8n workflow definitions
+└── README.md          # You are here
 ```
 
 ## Quick Start with Docker

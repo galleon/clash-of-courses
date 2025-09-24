@@ -45,7 +45,7 @@ export default function App() {
     }
 
     return (
-        <div style={{ padding: '2rem', fontFamily: 'Arial' }}>
+        <div style={{ padding: '2rem', fontFamily: 'Arial', position: 'relative', minHeight: '100vh' }}>
             <h1>BRS Prototype Portal</h1>
             {!currentUser && (
                 <div>
@@ -64,8 +64,35 @@ export default function App() {
             )}
             {currentUser && (
                 <div>
-                    <h2>Welcome, {currentUser.full_name}</h2>
-                    <button onClick={handleLogout}>Log out</button>
+                    <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        marginBottom: '1rem'
+                    }}>
+                        <h2>Welcome, {currentUser.full_name}</h2>
+                        <button
+                            onClick={handleLogout}
+                            style={{
+                                position: 'absolute',
+                                top: '2rem',
+                                right: '2rem',
+                                padding: '0.5rem 1rem',
+                                backgroundColor: '#dc3545',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '4px',
+                                cursor: 'pointer',
+                                fontWeight: 'bold',
+                                fontSize: '0.9rem',
+                                boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                            }}
+                            onMouseOver={(e) => e.target.style.backgroundColor = '#c82333'}
+                            onMouseOut={(e) => e.target.style.backgroundColor = '#dc3545'}
+                        >
+                            Log out
+                        </button>
+                    </div>
                     {view}
                 </div>
             )}

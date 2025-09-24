@@ -1,0 +1,15 @@
+[project]
+name = "brs-tests"
+version = "0.1.0"
+description = "BRS Prototype Test Suite"
+readme = "README.md"
+authors = [
+    { name = "Guillaume Alleon", email = "guillaume.alleon@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.32.5",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = []
