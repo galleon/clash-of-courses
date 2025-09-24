@@ -1,13 +1,9 @@
-"""SQLAlchemy models for the BRS prototype.
-
-This module defines ORM models corresponding to the database schema
-defined in the SQL migrations. Each class represents a table in the
-database with relationships where appropriate.
-"""
+"""SQLAlchemy models for the BRS prototype."""
 
 from sqlalchemy import Column, Integer, String, DECIMAL, ForeignKey, Text, TIMESTAMP
 from sqlalchemy.orm import relationship
-from db import Base
+
+from brs_backend.database.connection import Base
 
 
 class User(Base):
@@ -44,6 +40,8 @@ class Course(Base):
     code = Column(String(20), unique=True, nullable=False)
     name = Column(String(100), nullable=False)
     description = Column(Text)
+    credits = Column(Integer, default=3)
+    prerequisites = Column(Text)
 
     sections = relationship(
         "Section", back_populates="course", cascade="all, delete-orphan"
@@ -78,7 +76,7 @@ class Request(Base):
     student_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )
-    request_type = Column(String(20), nullable=False)
+    request_type = Column(String(20), nullable=False, default="add")
     course_id = Column(
         Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False
     )

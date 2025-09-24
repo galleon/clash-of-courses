@@ -7,15 +7,43 @@ described in the Business Requirements Specification: three students,
 two academic advisors, one department head, and one system administrator.
 """
 
+import argparse
 from sqlalchemy.orm import Session
 
-from db import SessionLocal, engine
-from models import User, Base, Course, Section
+from brs_backend.database.connection import SessionLocal, engine
+from brs_backend.models.database import User, Base, Course, Section, Request
 
 
-def main():
+def main(enroll_sarah=False):
+    import sys
+
+    print("🚀 Starting seed_personas.py script", flush=True)
+
     # Create all tables first
     Base.metadata.create_all(bind=engine)
+    print("📋 Database tables created/verified", flush=True)
+
+    # Always clear all data first for a fresh start
+    print("🔄 Resetting database - clearing all data...", flush=True)
+    db = SessionLocal()
+    try:
+        # Clear all tables in reverse dependency order
+        requests_deleted = db.query(Request).delete()
+        sections_deleted = db.query(Section).delete()
+        courses_deleted = db.query(Course).delete()
+        users_deleted = db.query(User).delete()
+        db.commit()
+        print("✅ Database cleared successfully:", flush=True)
+        print(f"   - Requests deleted: {requests_deleted}", flush=True)
+        print(f"   - Sections deleted: {sections_deleted}", flush=True)
+        print(f"   - Courses deleted: {courses_deleted}", flush=True)
+        print(f"   - Users deleted: {users_deleted}", flush=True)
+    except Exception as e:
+        print(f"❌ Error clearing database: {e}", flush=True)
+        db.rollback()
+        return
+    finally:
+        db.close()
 
     personas = [
         {
@@ -242,10 +270,91 @@ def main():
                     )
                     db.add(section)
 
+        # Create sample approved enrollment requests for testing (if requested)
+        if enroll_sarah:
+            print("📚 Creating sample enrollments for Sarah...", flush=True)
+
+            # Get Sarah Ahmed's user ID
+            sarah = db.query(User).filter_by(username="sarah.ahmed").first()
+            if sarah:
+                # Get some courses and sections for enrollment
+                cs101 = db.query(Course).filter_by(code="CS101").first()
+                math101 = db.query(Course).filter_by(code="MATH101").first()
+                eng101 = db.query(Course).filter_by(code="ENG101").first()
+
+                if cs101:
+                    cs101_section = (
+                        db.query(Section).filter_by(course_id=cs101.id).first()
+                    )
+                    enrollment1 = Request(
+                        student_id=sarah.id,
+                        request_type="add",
+                        course_id=cs101.id,
+                        section_to_id=cs101_section.id if cs101_section else None,
+                        justification="Required course for Computer Engineering major",
+                        status="approved",
+                        advisor_id=db.query(User).filter_by(role="advisor").first().id,
+                    )
+                    db.add(enrollment1)
+
+                if math101:
+                    math101_section = (
+                        db.query(Section).filter_by(course_id=math101.id).first()
+                    )
+                    enrollment2 = Request(
+                        student_id=sarah.id,
+                        request_type="add",
+                        course_id=math101.id,
+                        section_to_id=math101_section.id if math101_section else None,
+                        justification="Required mathematics course",
+                        status="approved",
+                        advisor_id=db.query(User).filter_by(role="advisor").first().id,
+                    )
+                    db.add(enrollment2)
+
+                if eng101:
+                    eng101_section = (
+                        db.query(Section).filter_by(course_id=eng101.id).first()
+                    )
+                    enrollment3 = Request(
+                        student_id=sarah.id,
+                        request_type="add",
+                        course_id=eng101.id,
+                        section_to_id=eng101_section.id if eng101_section else None,
+                        justification="General education requirement",
+                        status="approved",
+                        advisor_id=db.query(User).filter_by(role="advisor").first().id,
+                    )
+                    db.add(enrollment3)
+
+                print(
+                    f"✅ Created sample enrollments for {sarah.full_name}", flush=True
+                )
+        else:
+            print(
+                "📚 Skipping Sarah's enrollments (use --enroll_sarah to create them)",
+                flush=True,
+            )
+
         db.commit()
+        enrollment_msg = "and enrollments" if enroll_sarah else "(no enrollments)"
+        print(
+            f"✅ Database seeded successfully with personas, courses {enrollment_msg}",
+            flush=True,
+        )
     finally:
         db.close()
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Seed the database with personas and optionally create Sarah's enrollments"
+    )
+    parser.add_argument(
+        "--enroll_sarah",
+        action="store_true",
+        help="Create sample approved enrollments for Sarah Ahmed (CS101, MATH101, ENG101)",
+    )
+    args = parser.parse_args()
+
+    main(enroll_sarah=args.enroll_sarah)

@@ -5,17 +5,19 @@ FROM python:3.11-slim
 # `netcat` virtual package isn't available on some Debian variants.
 RUN apt-get update && apt-get install -y netcat-openbsd gcc && rm -rf /var/lib/apt/lists/*
 
-# Install uv and python dependencies
+# Install uv
 RUN pip install --no-cache-dir uv
 
 WORKDIR /app
 
-# Copy requirements and install via uv into the system environment
-COPY requirements.txt .
-RUN uv pip install --no-cache-dir --system -r requirements.txt
+# Copy application code first
+COPY brs_backend/ brs_backend/
+COPY pyproject.toml .
+COPY README.md .
+COPY entrypoint.sh .
 
-# Copy application code
-COPY . .
+# Install the package and dependencies with uv
+RUN uv pip install --system -e .
 
 # Copy entrypoint script
 RUN chmod +x /app/entrypoint.sh

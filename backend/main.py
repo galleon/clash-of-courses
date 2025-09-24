@@ -23,18 +23,70 @@ from sqlalchemy.orm import Session
 from db import SessionLocal, engine
 import models
 
+# Configure logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
 # Create all tables in the database. In a production system you might use
 # Alembic migrations instead of calling Base.metadata.create_all directly.
 models.Base.metadata.create_all(bind=engine)
 
 # Load environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_API_BASE = os.getenv("OPENAI_API_BASE", "https://api.openai.com/v1")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
+OPENAI_API_BASE = os.getenv("OPENAI_API_BASE")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL")
+
+
+# Validate API configuration at startup
+def validate_api_configuration():
+    """Validate OpenAI API configuration and connectivity at startup."""
+    if not OPENAI_API_KEY:
+        logger.error("❌ OPENAI_API_KEY not found in environment variables")
+        return False
+
+    if not OPENAI_API_BASE:
+        logger.error("❌ OPENAI_API_BASE not found in environment variables")
+        return False
+
+    if not OPENAI_MODEL:
+        logger.error("❌ OPENAI_MODEL not found in environment variables")
+        return False
+
+    # Test API connectivity
+    try:
+        test_client = openai.OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE)
+
+        # Test with a minimal request
+        response = test_client.chat.completions.create(
+            model=OPENAI_MODEL,
+            messages=[{"role": "user", "content": "test"}],
+            max_tokens=1,
+            timeout=10.0,
+        )
+        # Just verify we got a response (don't need to use it)
+        if response:
+            logger.info("✅ API connection validated successfully")
+            logger.info(f"   - API Base: {OPENAI_API_BASE}")
+            logger.info(f"   - Model: {OPENAI_MODEL}")
+            logger.info(
+                f"   - API Key: {'*' * (len(OPENAI_API_KEY) - 8) + OPENAI_API_KEY[-8:] if len(OPENAI_API_KEY) > 8 else '***'}"
+            )
+            return True
+
+    except Exception as e:
+        logger.error(f"❌ API connection validation failed: {e}")
+        logger.error(f"   - API Base: {OPENAI_API_BASE}")
+        logger.error(f"   - Model: {OPENAI_MODEL}")
+        logger.error(f"   - Check your API key and base URL configuration")
+        return False
+
 
 # Configure OpenAI client if API key is available
 openai_client = None
-if OPENAI_API_KEY:
+api_validated = validate_api_configuration()
+if api_validated:
     try:
         openai_client = openai.OpenAI(api_key=OPENAI_API_KEY, base_url=OPENAI_API_BASE)
     except Exception as e:
@@ -958,11 +1010,6 @@ Be professional but conversational. You have access to complete student and cour
         # Define function schemas for advisor actions
         advisor_functions = [
             {
-                "name": "get_pending_requests",
-                "description": "Get all pending course requests that need advisor review",
-                "parameters": {"type": "object", "properties": {}, "required": []},
-            },
-            {
                 "name": "review_request",
                 "description": "Review a specific course request in detail",
                 "parameters": {
@@ -1062,19 +1109,7 @@ Be professional but conversational. You have access to complete student and cour
             function_name = message_response.function_call.name
             function_args = json.loads(message_response.function_call.arguments)
 
-            if function_name == "get_pending_requests":
-                if request_details:
-                    requests_list = "\n".join(
-                        [
-                            f"• Request #{req['id']}: {req['student_name']} wants to {req['request_type']} {req['course_code']}: {req['course_name']}"
-                            for req in request_details
-                        ]
-                    )
-                    ai_response += f"\n\n📋 **Pending Requests ({len(request_details)} total):**\n{requests_list}"
-                else:
-                    ai_response += "\n\n📋 **Pending Requests:**\nNo pending requests at this time."
-
-            elif function_name == "review_request":
+            if function_name == "review_request":
                 request_id = function_args["request_id"]
                 req = next((r for r in request_details if r["id"] == request_id), None)
                 if req:

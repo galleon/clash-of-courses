@@ -17,7 +17,7 @@ done
 echo "Database is up. Seeding personas..."
 
 # Seed the database. Ignore errors in case it has already been seeded.
-python seed_personas.py || true
+cd /app && python -m brs_backend.seed_personas || true
 
 echo "Starting backend service..."
-uvicorn main:app --host 0.0.0.0 --port 8000 --workers 1
+uvicorn brs_backend.main:app --host 0.0.0.0 --port 8000 --workers 1
