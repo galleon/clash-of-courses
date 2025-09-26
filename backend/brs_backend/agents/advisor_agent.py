@@ -2,7 +2,7 @@
 
 from typing import Any, Dict
 
-from .student_tools_v3 import (
+from .student_tools import (
     check_attachable,
     check_pending_requests,
     get_current_schedule,

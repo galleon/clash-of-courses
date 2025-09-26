@@ -4,7 +4,7 @@ import json
 from typing import Dict, Any, List
 from uuid import UUID
 
-from .student_tools_v3 import (
+from .student_tools import (
     get_student_info,
     check_pending_requests,
     check_attachable,
