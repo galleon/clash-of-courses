@@ -1,8 +1,9 @@
-import datetime
+from datetime import datetime, UTC
+
 from smolagents import tool
 
 from brs_backend.database.connection import SessionLocal
-from brs_backend.models.database import User, Course, Request
+from brs_backend.models.database import Course, RegistrationRequest, User
 
 
 @tool
@@ -19,7 +20,11 @@ def get_request_details(request_id: int) -> dict:
     """
     try:
         db = SessionLocal()
-        req = db.query(Request).filter(Request.id == request_id).first()
+        req = (
+            db.query(RegistrationRequest)
+            .filter(RegistrationRequest.id == request_id)
+            .first()
+        )
 
         if not req:
             db.close()
@@ -101,7 +106,11 @@ def approve_request(request_id: int, advisor_id: int, rationale: str) -> dict:
     """
     try:
         db = SessionLocal()
-        req = db.query(Request).filter(Request.id == request_id).first()
+        req = (
+            db.query(RegistrationRequest)
+            .filter(RegistrationRequest.id == request_id)
+            .first()
+        )
 
         if not req:
             db.close()
@@ -123,7 +132,7 @@ def approve_request(request_id: int, advisor_id: int, rationale: str) -> dict:
         req.advisor_id = advisor_id
         req.status = "approved"
         req.justification += f"\n\n[Advisor Approval]: {rationale}"
-        req.updated_at = datetime.datetime.utcnow()
+        req.updated_at = datetime.now(UTC)
 
         db.commit()
 
@@ -172,7 +181,11 @@ def reject_request(request_id: int, advisor_id: int, rationale: str) -> dict:
     """
     try:
         db = SessionLocal()
-        req = db.query(Request).filter(Request.id == request_id).first()
+        req = (
+            db.query(RegistrationRequest)
+            .filter(RegistrationRequest.id == request_id)
+            .first()
+        )
 
         if not req:
             db.close()
@@ -194,7 +207,7 @@ def reject_request(request_id: int, advisor_id: int, rationale: str) -> dict:
         req.advisor_id = advisor_id
         req.status = "rejected"
         req.justification += f"\n\n[Advisor Rejection]: {rationale}"
-        req.updated_at = datetime.datetime.utcnow()
+        req.updated_at = datetime.now(UTC)
 
         db.commit()
 
@@ -245,11 +258,11 @@ def get_next_pending_request(advisor_id: int) -> dict:
 
         # Get the first pending request
         req = (
-            db.query(Request)
-            .join(User, Request.student_id == User.id)
-            .join(Course, Request.course_id == Course.id)
-            .filter(Request.status == "pending")
-            .order_by(Request.created_at.asc())
+            db.query(RegistrationRequest)
+            .join(User, RegistrationRequest.student_id == User.id)
+            .join(Course, RegistrationRequest.course_id == Course.id)
+            .filter(RegistrationRequest.status == "pending")
+            .order_by(RegistrationRequest.created_at.asc())
             .first()
         )
 

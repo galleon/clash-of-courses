@@ -1,17 +1,46 @@
 """Student agent tools for course management."""
 
-import datetime
+from datetime import datetime, UTC
 from smolagents import tool
 
 from brs_backend.database.connection import SessionLocal
-from brs_backend.models.database import User, Course, Section, Request
-from brs_backend.core.logging import log_detailed
+from brs_backend.models.database import User, Course, Section, RegistrationRequest
 
 
 @tool
 def check_pending_requests(student_id: int) -> dict:
     """QUICK CHECK: Get only pending registration requests for a student.
-    Use this for 'pending issues', 'pending requests', or similar queries.
+    Use this for 'pending issues',         # Find course by code
+        course = db.query(Course).filter(Course.code == course_code).first()
+        if not course:
+            db.close()
+            return {
+                "success": False,
+                "error": f"Course {course_code} not found.",
+                "data": None,
+            }
+
+        # Find an available section for this course
+        section = db.query(Section).filter(Section.course_id == course.course_id).first()
+        if not section:
+            db.close()
+            return {
+                "success": False,
+                "error": f"No sections available for course {course_code}.",
+                "data": None,
+            }
+
+        # Check for existing request
+        existing_request = (
+            db.query(RegistrationRequest)
+            .join(Section, RegistrationRequest.to_section_id == Section.section_id)
+            .filter(
+                RegistrationRequest.student_id == student_id,
+                Section.course_id == course.course_id,
+                RegistrationRequest.state.in_(["submitted", "approved"]),
+            )
+            .first()
+        )or similar queries.
 
     Args:
         student_id: The ID of the student to check
@@ -21,9 +50,13 @@ def check_pending_requests(student_id: int) -> dict:
 
         # Get only pending requests
         pending_requests = (
-            db.query(Request)
-            .join(Course, Request.course_id == Course.id)
-            .filter(Request.student_id == student_id, Request.status == "pending")
+            db.query(RegistrationRequest)
+            .join(Section, RegistrationRequest.to_section_id == Section.section_id)
+            .join(Course, Section.course_id == Course.course_id)
+            .filter(
+                RegistrationRequest.student_id == student_id,
+                RegistrationRequest.state == "submitted",
+            )
             .all()
         )
 
@@ -40,18 +73,18 @@ def check_pending_requests(student_id: int) -> dict:
         # Format pending requests
         requests_data = []
         for req in pending_requests:
-            # Get course details with explicit query
-            course = db.query(Course).filter(Course.id == req.course_id).first()
+            # Get course details through the section relationship
+            course = req.to_section.course if req.to_section else None
             requests_data.append(
                 {
-                    "request_id": req.id,
+                    "request_id": req.request_id,
                     "course_code": course.code if course else None,
-                    "course_name": course.name if course else None,
+                    "course_name": course.title if course else None,
                     "justification": req.justification,
                     "request_date": req.created_at.isoformat()
                     if req.created_at
                     else None,
-                    "status": req.status,
+                    "status": req.state,
                 }
             )
 
@@ -87,12 +120,13 @@ def get_current_enrollments(student_id: int) -> dict:
 
         # Get approved enrollments
         enrolled_courses = (
-            db.query(Request)
-            .join(Course, Request.course_id == Course.id)
+            db.query(RegistrationRequest)
+            .join(Section, RegistrationRequest.to_section_id == Section.section_id)
+            .join(Course, Section.course_id == Course.course_id)
             .filter(
-                Request.student_id == student_id,
-                Request.status == "approved",
-                Request.request_type == "add",
+                RegistrationRequest.student_id == student_id,
+                RegistrationRequest.state == "approved",
+                RegistrationRequest.type == "ADD",
             )
             .all()
         )
@@ -163,12 +197,13 @@ def get_student_info(student_id: int) -> dict:
 
         # Get student's enrolled courses (approved registration requests)
         enrolled_courses = (
-            db.query(Request)
-            .join(Course, Request.course_id == Course.id)
+            db.query(RegistrationRequest)
+            .join(Section, RegistrationRequest.to_section_id == Section.section_id)
+            .join(Course, Section.course_id == Course.course_id)
             .filter(
-                Request.student_id == student_id,
-                Request.status == "approved",
-                Request.request_type == "add",
+                RegistrationRequest.student_id == student_id,
+                RegistrationRequest.state == "approved",
+                RegistrationRequest.type == "ADD",
             )
             .all()
         )
@@ -176,28 +211,27 @@ def get_student_info(student_id: int) -> dict:
         # Format enrolled courses data
         current_courses = []
         for enrollment in enrolled_courses:
-            # Explicitly fetch course to ensure credits field is available
-            course = db.query(Course).filter(Course.id == enrollment.course_id).first()
+            # Get course through the relationship
+            course = enrollment.to_section.course if enrollment.to_section else None
             course_info = {
-                "course_id": course.id if course else None,
+                "course_id": course.course_id if course else None,
                 "course_code": course.code if course else "Unknown",
-                "course_name": course.name if course else "Unknown",
+                "course_name": course.title if course else "Unknown",
                 "description": course.description if course else None,
                 "registration_date": enrollment.created_at.isoformat()
                 if enrollment.created_at
                 else None,
-                "section_id": enrollment.section_to_id
-                if enrollment.section_to_id
+                "section_id": enrollment.to_section_id
+                if enrollment.to_section_id
                 else None,
             }
 
             # Add section details if available
-            if enrollment.section_to:
+            if enrollment.to_section:
                 course_info.update(
                     {
-                        "section_code": enrollment.section_to.section_code,
-                        "schedule": enrollment.section_to.schedule,
-                        "instructor": enrollment.section_to.instructor,
+                        "section_code": enrollment.to_section.section_code,
+                        "instructor": enrollment.to_section.instructor_name,
                     }
                 )
 
@@ -205,12 +239,13 @@ def get_student_info(student_id: int) -> dict:
 
         # Get student's pending requests
         pending_requests = (
-            db.query(Request)
-            .join(Course, Request.course_id == Course.id)
+            db.query(RegistrationRequest)
+            .join(Section, RegistrationRequest.to_section_id == Section.section_id)
+            .join(Course, Section.course_id == Course.course_id)
             .filter(
-                Request.student_id == student_id,
-                Request.status == "pending",
-                Request.request_type == "add",
+                RegistrationRequest.student_id == student_id,
+                RegistrationRequest.state == "submitted",
+                RegistrationRequest.type == "ADD",
             )
             .all()
         )
@@ -218,19 +253,19 @@ def get_student_info(student_id: int) -> dict:
         # Format pending requests data
         pending_course_requests = []
         for request in pending_requests:
-            # Get course details with explicit query
-            course = db.query(Course).filter(Course.id == request.course_id).first()
+            # Get course details through relationship
+            course = request.to_section.course if request.to_section else None
             request_info = {
-                "request_id": request.id,
-                "course_id": course.id if course else None,
+                "request_id": request.request_id,
+                "course_id": course.course_id if course else None,
                 "course_code": course.code if course else None,
-                "course_name": course.name if course else None,
+                "course_name": course.title if course else None,
                 "description": course.description if course else None,
                 "justification": request.justification,
                 "request_date": request.created_at.isoformat()
                 if request.created_at
                 else None,
-                "status": request.status,
+                "status": request.state,
             }
             pending_course_requests.append(request_info)
 
@@ -287,11 +322,11 @@ def find_course_by_code(course_code: str) -> dict:
         return {
             "success": True,
             "data": {
-                "course_id": course.id,
+                "course_id": course.course_id,
                 "course_code": course.code,
-                "course_name": course.name,
+                "course_name": course.title,
                 "description": course.description,
-                "message": f"Found course: {course.code} - {course.name}",
+                "message": f"Found course: {course.code} - {course.title}",
             },
         }
 
@@ -417,7 +452,7 @@ def create_registration_request(
     try:
         db = SessionLocal()
 
-        # Find course
+        # Find course by code
         course = db.query(Course).filter(Course.code == course_code).first()
         if not course:
             db.close()
@@ -427,13 +462,26 @@ def create_registration_request(
                 "data": None,
             }
 
+        # Find an available section for this course
+        section = (
+            db.query(Section).filter(Section.course_id == course.course_id).first()
+        )
+        if not section:
+            db.close()
+            return {
+                "success": False,
+                "error": f"No sections available for course {course_code}.",
+                "data": None,
+            }
+
         # Check for existing request
         existing_request = (
-            db.query(Request)
+            db.query(RegistrationRequest)
+            .join(Section, RegistrationRequest.to_section_id == Section.section_id)
             .filter(
-                Request.student_id == student_id,
-                Request.course_id == course.id,
-                Request.status.in_(["pending", "approved"]),
+                RegistrationRequest.student_id == student_id,
+                Section.course_id == course.course_id,
+                RegistrationRequest.state.in_(["submitted", "approved"]),
             )
             .first()
         )
@@ -442,23 +490,23 @@ def create_registration_request(
             db.close()
             return {
                 "success": False,
-                "error": f"You already have a {existing_request.status} request for {course_code}.",
+                "error": f"You already have a {existing_request.state} request for {course_code}.",
                 "data": {
-                    "existing_request_id": existing_request.id,
-                    "existing_status": existing_request.status,
+                    "existing_request_id": existing_request.request_id,
+                    "existing_status": existing_request.state,
                     "course_code": course_code,
                 },
             }
 
         # Create request
-        new_request = Request(
+        new_request = RegistrationRequest(
             student_id=student_id,
-            course_id=course.id,
-            request_type="add",
-            status="pending",
+            to_section_id=section.section_id,
+            type="ADD",
+            state="submitted",
             justification=justification,
-            created_at=datetime.datetime.utcnow(),
-            updated_at=datetime.datetime.utcnow(),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
         )
 
         db.add(new_request)
@@ -469,11 +517,11 @@ def create_registration_request(
             "success": True,
             "error": None,
             "data": {
-                "request_id": new_request.id,
+                "request_id": new_request.request_id,
                 "student_id": student_id,
                 "course_code": course_code,
-                "course_title": course.name,
-                "status": "pending",
+                "course_title": course.title,
+                "status": "submitted",
                 "justification": justification,
                 "created_at": new_request.created_at.isoformat(),
                 "message": "Registration request created successfully. Your request is pending advisor approval.",

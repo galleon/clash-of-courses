@@ -152,3 +152,56 @@ The backend requires environment variables for configuration:
 - `DATABASE_URL`: PostgreSQL connection string (required)
 - `DEBUG`: Enable debug mode (optional, default: false)
 - `LOG_LEVEL`: Logging level (optional, default: info)
+
+### CORS Configuration
+
+Cross-Origin Resource Sharing (CORS) is configured to allow the frontend to communicate with the backend API across different ports/origins.
+
+**Current Configuration** (in `brs_backend/core/config.py`):
+```python
+self.ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:5173"]
+```
+
+**Supported Origins**:
+- `http://localhost:3000` - For production/built frontend served with `serve`
+- `http://localhost:5173` - For development frontend using Vite dev server
+
+**Why Both Are Needed**:
+- **Development Mode**: Frontend runs on Vite dev server (port 5173) with proxy support
+- **Production Mode**: Frontend built as static files and served on port 3000
+
+**CORS Settings**:
+- `allow_credentials=True` - Allows cookies and auth headers
+- `allow_methods=["*"]` - Allows all HTTP methods (GET, POST, PUT, DELETE, OPTIONS, etc.)
+- `allow_headers=["*"]` - Allows all headers including Authorization for JWT tokens
+
+**Troubleshooting CORS Issues**:
+
+1. **"Network Error" in Browser**:
+   ```bash
+   # Check if backend CORS origins match frontend URL
+   docker-compose logs backend | grep -i cors
+   ```
+
+2. **OPTIONS Requests Failing**:
+   ```bash
+   # CORS preflight requests should return 200 OK
+   curl -X OPTIONS http://localhost:8000/api/v1/auth/login \
+        -H "Origin: http://localhost:5173" \
+        -H "Access-Control-Request-Method: POST"
+   ```
+
+3. **Adding New Origins**:
+   ```python
+   # Edit brs_backend/core/config.py
+   self.ALLOWED_ORIGINS = [
+       "http://localhost:3000",   # Production frontend
+       "http://localhost:5173",   # Development frontend
+       "https://yourdomain.com"   # Production domain
+   ]
+   ```
+
+**Security Notes**:
+- Never use `["*"]` for `allow_origins` in production with `allow_credentials=True`
+- Always specify exact origins for production deployments
+- The current configuration is for development/testing purposes only

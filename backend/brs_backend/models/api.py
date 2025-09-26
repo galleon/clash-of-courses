@@ -1,8 +1,9 @@
 """Pydantic models for API request/response validation."""
 
 from datetime import datetime
+from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class UserBase(BaseModel):
@@ -23,47 +24,43 @@ class UserCreate(UserBase):
 class UserOut(UserBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CourseBase(BaseModel):
     code: str
-    name: str
-    title: str | None = None
+    title: str
     description: str | None = None
     credits: int | None = 3
+    level: int | None = 100
     prerequisites: str | None = None
 
 
 class CourseOut(CourseBase):
-    id: int
+    course_id: UUID  # UUID will be automatically serialized to string
 
-    class Config:
-        from_attributes = True
-
-
-class RequestBase(BaseModel):
-    student_id: int
-    course_id: int
-    request_type: str = "add"
-    justification: str
+    model_config = ConfigDict(from_attributes=True)
 
 
-class RequestCreate(RequestBase):
+class RegistrationRequestBase(BaseModel):
+    student_id: UUID  # UUID as string
+    to_section_id: UUID | None = None  # UUID as string
+    from_section_id: UUID | None = None  # UUID as string
+    type: str = "ADD"  # ADD, DROP, CHANGE_SECTION
+    justification: str | None = None
+
+
+class RegistrationRequestCreate(RegistrationRequestBase):
     pass
 
 
-class RequestOut(RequestBase):
-    id: int
-    status: str
-    advisor_id: int | None = None
-    department_head_id: int | None = None
+class RegistrationRequestOut(RegistrationRequestBase):
+    request_id: UUID  # UUID as string
+    state: str
     created_at: datetime | None = None
     updated_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ChatMessage(BaseModel):

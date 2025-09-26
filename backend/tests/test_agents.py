@@ -1,135 +1,116 @@
-"""Test agent tools functionality."""
+"""Tests for agent utility functions against the SQLite test database."""
 
-from unittest.mock import Mock, patch
-
-from src.models.database import User, Course, Section, Request
+from brs_backend.agents.advisor_tools import approve_request, get_request_details
+from brs_backend.agents.student_tools import (
+    create_registration_request,
+    find_course_by_code,
+    get_student_info,
+)
 
 
 class TestStudentTools:
-    """Test student agent tools."""
+    """Validate student-facing agent helpers."""
 
     def test_get_student_info(self, client, sample_user_data):
-        """Test get_student_info tool."""
-        # Create student user first
+        """Returns student profile summary with no enrollments."""
         user_response = client.post("/api/users/", json=sample_user_data)
-        user_id = user_response.json()["id"]
+        print(f"Response status: {user_response.status_code}")
+        print(f"Response body: {user_response.json()}")
+        user_id = user_response.json()["id"]  # User model uses "id" field
 
-        # Import and test the tool directly
-        from src.agents.student_tools import get_student_info
+        result = get_student_info(user_id)
+        print(f"get_student_info result: {result}")
 
-        with patch("src.agents.student_tools.SessionLocal") as mock_session:
-            mock_db = Mock()
-            mock_session.return_value.__enter__.return_value = mock_db
+        assert result["success"] is True
+        assert result["error"] is None
+        payload = result["data"]
+        assert payload["full_name"] == sample_user_data["full_name"]
+        assert payload["role"] == sample_user_data["role"]
+        assert payload["total_enrolled_courses"] == 0
+        assert payload["total_pending_requests"] == 0
 
-            mock_user = Mock()
-            mock_user.id = user_id
-            mock_user.username = sample_user_data["username"]
-            mock_user.full_name = sample_user_data["full_name"]
-            mock_user.role = "student"
-            mock_user.gpa = sample_user_data["gpa"]
-            mock_user.credit_hours_completed = sample_user_data[
-                "credit_hours_completed"
-            ]
-            mock_user.major = sample_user_data["major"]
+    def test_find_course_by_code(self, client, sample_course_data):
+        """Find an existing course by code."""
+        client.post("/api/courses/", json=sample_course_data)
 
-            mock_db.query.return_value.filter_by.return_value.first.return_value = (
-                mock_user
-            )
+        result = find_course_by_code(sample_course_data["code"])
 
-            result = get_student_info(user_id)
+        assert result["success"] is True
+        course = result["data"]
+        assert course["course_code"] == sample_course_data["code"]
+        assert course["course_name"] == sample_course_data["title"]
 
-            assert isinstance(result, dict)
-            assert result["status"] == "success"
-            assert result["data"]["username"] == sample_user_data["username"]
-            assert result["data"]["gpa"] == sample_user_data["gpa"]
+    def test_create_registration_request(
+        self, client, sample_user_data, sample_course_data
+    ):
+        """Create a new pending registration request."""
+        user_response = client.post("/api/users/", json=sample_user_data)
+        student_id = user_response.json()["id"]
+        client.post("/api/courses/", json=sample_course_data)
 
-    def test_search_courses(self):
-        """Test search_courses tool."""
-        from src.agents.student_tools import search_courses
+        result = create_registration_request(
+            student_id=student_id,
+            course_code=sample_course_data["code"],
+            justification="Need this course for my major",
+        )
 
-        with patch("src.agents.student_tools.SessionLocal") as mock_session:
-            mock_db = Mock()
-            mock_session.return_value.__enter__.return_value = mock_db
-
-            mock_course = Mock()
-            mock_course.id = 1
-            mock_course.code = "CS101"
-            mock_course.name = "Introduction to Computer Science"
-            mock_course.description = "Basic programming concepts"
-            mock_course.credits = 3
-
-            mock_db.query.return_value.filter.return_value.all.return_value = [
-                mock_course
-            ]
-
-            result = search_courses("computer science")
-
-            assert isinstance(result, dict)
-            assert result["status"] == "success"
-            assert len(result["data"]) == 1
-            assert result["data"][0]["code"] == "CS101"
-
-    def test_create_registration_request(self):
-        """Test create_registration_request tool."""
-        from src.agents.student_tools import create_registration_request
-
-        with patch("src.agents.student_tools.SessionLocal") as mock_session:
-            mock_db = Mock()
-            mock_session.return_value.__enter__.return_value = mock_db
-
-            # Mock user and course existence
-            mock_db.query.return_value.get.side_effect = [Mock(id=1), Mock(id=1)]
-
-            result = create_registration_request(1, 1, "Need this course for my major")
-
-            assert isinstance(result, dict)
-            assert result["status"] == "success"
-            assert "request created" in result["message"].lower()
+        assert result["success"] is True
+        request_payload = result["data"]
+        assert request_payload["status"] == "pending"
+        assert request_payload["student_id"] == student_id
+        assert request_payload["course_code"] == sample_course_data["code"]
 
 
 class TestAdvisorTools:
-    """Test advisor agent tools."""
+    """Validate advisor-facing agent helpers."""
 
-    def test_approve_request(self):
-        """Test approve_request tool."""
-        from src.agents.advisor_tools import approve_request
+    def test_approve_request(
+        self, client, sample_user_data, sample_course_data, sample_request_data
+    ):
+        """Approve a pending request and confirm metadata."""
+        advisor_data = sample_user_data.copy()
+        advisor_data.update({"username": "advisor.user", "role": "advisor"})
+        advisor_response = client.post("/api/users/", json=advisor_data)
+        advisor_id = advisor_response.json()["id"]
 
-        with patch("src.agents.advisor_tools.SessionLocal") as mock_session:
-            mock_db = Mock()
-            mock_session.return_value.__enter__.return_value = mock_db
+        student_response = client.post("/api/users/", json=sample_user_data)
+        student_id = student_response.json()["id"]
+        client.post("/api/courses/", json=sample_course_data)
 
-            mock_request = Mock()
-            mock_request.id = 1
-            mock_request.status = "pending"
-            mock_db.query.return_value.get.return_value = mock_request
+        request_result = create_registration_request(
+            student_id=student_id,
+            course_code=sample_course_data["code"],
+            justification=sample_request_data["justification"],
+        )
+        request_id = request_result["data"]["request_id"]
 
-            result = approve_request(1, 1, "Student meets requirements")
+        result = approve_request(request_id, advisor_id, "Student meets requirements")
 
-            assert isinstance(result, dict)
-            assert result["status"] == "success"
-            assert "approved" in result["message"].lower()
+        assert result["success"] is True
+        data = result["data"]
+        assert data["status"] == "approved"
+        assert data["request_id"] == request_id
+        assert data["advisor_id"] == advisor_id
 
-    def test_get_advisor_info(self):
-        """Test get_advisor_info tool."""
-        from src.agents.advisor_tools import get_advisor_info
+    def test_get_request_details(
+        self, client, sample_user_data, sample_course_data, sample_request_data
+    ):
+        """Retrieve structured details for a pending request."""
+        student_response = client.post("/api/users/", json=sample_user_data)
+        student_id = student_response.json()["id"]
+        client.post("/api/courses/", json=sample_course_data)
 
-        with patch("src.agents.advisor_tools.SessionLocal") as mock_session:
-            mock_db = Mock()
-            mock_session.return_value.__enter__.return_value = mock_db
+        request_result = create_registration_request(
+            student_id=student_id,
+            course_code=sample_course_data["code"],
+            justification=sample_request_data["justification"],
+        )
+        request_id = request_result["data"]["request_id"]
 
-            mock_advisor = Mock()
-            mock_advisor.id = 1
-            mock_advisor.username = "dr.smith"
-            mock_advisor.full_name = "Dr. Smith"
-            mock_advisor.role = "advisor"
-            mock_advisor.major = "Computer Science"
+        result = get_request_details(request_id)
 
-            mock_db.query.return_value.filter_by.return_value.first.return_value = (
-                mock_advisor
-            )
-
-            result = get_advisor_info(1)
-
-            assert isinstance(result, dict)
-            assert result["status"] == "success"
-            assert result["data"]["role"] == "advisor"
+        assert result["success"] is True
+        payload = result["data"]
+        assert payload["request"]["id"] == request_id
+        assert payload["request"]["student_id"] == student_id
+        assert payload["course"]["code"] == sample_course_data["code"]

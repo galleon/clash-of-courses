@@ -21,6 +21,8 @@ dependencies = [
     "smolagents[openai]>=1.21.2",
     "python-multipart>=0.0.12",
     "python-dotenv>=1.0.1",
+    "PyJWT>=2.8.0",
+    "passlib[bcrypt]>=1.7.4",
 ]
 
 [project.optional-dependencies]

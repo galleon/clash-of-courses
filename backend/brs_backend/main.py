@@ -10,8 +10,18 @@ from brs_backend.models.database import Base
 from brs_backend.agents import initialize_agents
 from brs_backend.api.users import router as users_router
 from brs_backend.api.requests import router as requests_router
-from brs_backend.api.chat import router as chat_router
 from brs_backend.api.courses import router as courses_router
+from brs_backend.auth.endpoints import router as auth_router
+from brs_backend.api.chat_endpoints import router as chat_endpoints_router
+
+# Import SmolAgents router
+try:
+    from brs_backend.api.agents import router as agents_router
+    SMOLAGENTS_AVAILABLE = True
+except ImportError:
+    agents_router = None
+    SMOLAGENTS_AVAILABLE = False
+    logger.warning("SmolAgents router not available")
 
 # Create all tables in the database
 Base.metadata.create_all(bind=engine)
@@ -22,19 +32,29 @@ initialize_agents()
 app = FastAPI(title="BRS Prototype API", version="0.1.0")
 
 # Add CORS middleware
+# This enables the frontend (running on different ports) to communicate with the API
+# Origins are configured in settings.ALLOWED_ORIGINS (see core/config.py)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=settings.ALLOWED_ORIGINS,  # Frontend URLs (localhost:3000, localhost:5173)
+    allow_credentials=True,  # Allow cookies and Authorization headers
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, PUT, DELETE, OPTIONS)
+    allow_headers=["*"],  # Allow all headers (including Authorization for JWT)
 )
 
 # Include routers
-app.include_router(users_router)
+app.include_router(auth_router)  # Authentication endpoints
+app.include_router(chat_endpoints_router)  # New chat API with SSE support
+app.include_router(users_router, prefix="/api")
 app.include_router(courses_router, prefix="/api")
-app.include_router(requests_router)
-app.include_router(chat_router)
+app.include_router(requests_router, prefix="/api")
+
+# Include SmolAgents router if available
+if SMOLAGENTS_AVAILABLE and agents_router:
+    app.include_router(agents_router)
+    logger.info("SmolAgents endpoints registered successfully")
+else:
+    logger.info("SmolAgents endpoints not available")
 
 
 @app.get("/health")
@@ -47,6 +67,7 @@ def health_check():
         "openai_configured": bool(settings.OPENAI_API_KEY),
         "openai_model": settings.OPENAI_MODEL if settings.OPENAI_API_KEY else None,
         "database": "connected",
+        "smolagents": SMOLAGENTS_AVAILABLE,
     }
 
     # Test AI service if configured

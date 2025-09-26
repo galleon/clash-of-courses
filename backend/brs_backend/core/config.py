@@ -27,8 +27,14 @@ class Settings:
         # API configuration
         self.API_BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
 
-        # CORS configuration
-        self.ALLOWED_ORIGINS = ["http://localhost:3000"]
+        # CORS configuration - Frontend Origins
+        # These URLs are allowed to make requests to the API from browsers
+        self.ALLOWED_ORIGINS = [
+            "http://localhost:3000",  # Production frontend (serve -s dist)
+            "http://localhost:5173",  # Development frontend (Vite dev server)
+        ]
+        # Note: In production, replace with actual domain(s) like "https://yourdomain.com"
+        # Never use ["*"] with allow_credentials=True in production
 
         # Development settings
         self.DEBUG = os.getenv("DEBUG", "false").lower() == "true"

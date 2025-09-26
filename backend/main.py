@@ -23,6 +23,13 @@ from sqlalchemy.orm import Session
 from db import SessionLocal, engine
 import models
 
+# Import SmolAgents router
+try:
+    from brs_backend.api.agents import router as agents_router
+except ImportError:
+    agents_router = None
+    logger.warning("SmolAgents not available - agent endpoints disabled")
+
 # Configure logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -32,6 +39,15 @@ logging.basicConfig(
 # Create all tables in the database. In a production system you might use
 # Alembic migrations instead of calling Base.metadata.create_all directly.
 models.Base.metadata.create_all(bind=engine)
+
+# Import SmolAgents router
+try:
+    from brs_backend.api.agents import router as agents_router
+    SMOLAGENTS_AVAILABLE = True
+except ImportError:
+    agents_router = None
+    SMOLAGENTS_AVAILABLE = False
+    logger.warning("SmolAgents not available - agent endpoints disabled")
 
 # Load environment variables
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -104,6 +120,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include SmolAgents router if available
+if SMOLAGENTS_AVAILABLE and agents_router:
+    app.include_router(agents_router)
+    logger.info("SmolAgents endpoints registered successfully")
+else:
+    logger.info("SmolAgents endpoints not available")
+
 
 def get_db():
     """Provide a database session for request handlers."""
@@ -122,6 +145,7 @@ def health_check():
         "openai_configured": bool(OPENAI_API_KEY),
         "openai_model": OPENAI_MODEL if OPENAI_API_KEY else None,
         "database": "connected",
+        "smolagents": SMOLAGENTS_AVAILABLE,
     }
 
     # Test OpenAI API if configured

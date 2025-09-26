@@ -2,10 +2,12 @@ services:
   db:
     image: postgres:14
     restart: always
+    env_file:
+      - .env
     environment:
-      POSTGRES_DB: brs_prototype_db
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -18,16 +20,12 @@ services:
       - db
     env_file:
       - .env
-    environment:
-      DATABASE_URL: postgresql://postgres:postgres@db:5432/brs_prototype_db
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
-      OPENAI_API_BASE: ${OPENAI_API_BASE:-https://api.openai.com/v1}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-3.5-turbo}
-      DEBUG: ${DEBUG:-false}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "8000:8000"
     restart: always
+    # volumes:
+    #   # Optional: uncomment for development to sync code changes
+    #   - ./backend/brs_backend:/app/brs_backend
 
   frontend:
     build:
@@ -36,11 +34,12 @@ services:
       - backend
     env_file:
       - .env
-    environment:
-      VITE_API_BASE: ${VITE_API_BASE:-http://localhost:8000}
     ports:
-      - "3000:3000"
+      - "5173:5173"
     restart: always
+    # volumes:
+    #   # Optional: uncomment for development to sync code changes
+    #   - ./frontend/src:/app/src
 
 volumes:
   postgres-data:

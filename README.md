@@ -469,6 +469,63 @@ LOG_LEVEL=info
    docker-compose logs frontend
    ```
 
+#### CORS and Network Issues
+**Problem:** "Network Error" when logging in, "Disconnected" status in UI
+
+This typically happens when the frontend cannot communicate with the backend due to CORS (Cross-Origin Resource Sharing) configuration issues.
+
+**Solutions:**
+1. **Verify Frontend Port Configuration:**
+   ```bash
+   # Check which port the frontend is running on
+   docker-compose logs frontend
+
+   # Should show either:
+   # Port 3000: Production mode (serve -s dist)
+   # Port 5173: Development mode (Vite dev server)
+   ```
+
+2. **Check CORS Configuration:**
+   ```bash
+   # Current CORS settings in backend/brs_backend/core/config.py should include:
+   ALLOWED_ORIGINS = ["http://localhost:3000", "http://localhost:5173"]
+   ```
+
+3. **Test Direct API Access:**
+   ```bash
+   # Test if backend accepts requests from your frontend origin
+   curl -X OPTIONS http://localhost:8000/api/v1/auth/login \
+        -H "Origin: http://localhost:5173" \
+        -H "Access-Control-Request-Method: POST"
+   ```
+
+4. **Fix Common CORS Issues:**
+   - **Development Mode**: Frontend runs on port 5173 with Vite proxy
+   - **Production Mode**: Frontend runs on port 3000 with static serving
+   - **Mixed Mode**: Update ALLOWED_ORIGINS to include both ports
+
+   ```bash
+   # If you changed frontend configuration, rebuild:
+   docker-compose down
+   docker-compose build frontend backend --no-cache
+   docker-compose up -d
+   ```
+
+5. **Debug Network Communication:**
+   ```bash
+   # Check if containers can communicate
+   docker-compose exec frontend wget -O- http://backend:8000/health
+
+   # Check backend logs for CORS-related errors
+   docker-compose logs backend | grep -i cors
+   ```
+
+**Connection Status "Disconnected":**
+- This usually indicates the chat session endpoint is failing
+- Check browser Network tab for failed API requests
+- Verify JWT token is being sent in Authorization headers
+- Ensure all API endpoints support CORS preflight (OPTIONS) requests
+
 ### Development Tips
 
 #### Testing Different AI Models
