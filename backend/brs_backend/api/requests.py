@@ -1,6 +1,5 @@
 """Request management API routes."""
 
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -30,7 +29,7 @@ def create_request(request: RegistrationRequestCreate, db: Session = Depends(get
     return db_request
 
 
-@router.get("/", response_model=List[RegistrationRequestOut])
+@router.get("/", response_model=list[RegistrationRequestOut])
 def list_requests(db: Session = Depends(get_db)):
     """List all requests."""
     return db.query(RegistrationRequest).all()

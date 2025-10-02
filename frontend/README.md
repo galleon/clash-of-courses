@@ -92,11 +92,59 @@ frontend/
     ├── hooks/
     │   ├── useAuth.js      # Authentication hook
     │   └── useChat.js      # Chat functionality hook
-    └── components/
-        ├── StudentView.jsx
-        ├── AdvisorView.jsx
-        ├── AdminView.jsx
-        └── [other components]
+    ├── components/
+    │   ├── StudentView.jsx
+    │   ├── AdvisorView.jsx
+    │   ├── AdminView.jsx
+    │   ├── CardRenderer.jsx # Rich card rendering system
+    │           └── logger.js       # Environment-based logging utility
+```
+
+## Production Features
+
+### Environment-Based Logging
+The frontend includes a production-ready logging system:
+
+```javascript
+// utils/logger.js
+const logger = {
+    debug: (message, ...args) => {
+        if (import.meta.env.DEV) {
+            console.log(`[DEBUG] ${message}`, ...args);
+        }
+    },
+    info: (message, ...args) => {
+        if (import.meta.env.DEV) {
+            console.info(`[INFO] ${message}`, ...args);
+        }
+    },
+    error: (message, ...args) => {
+        console.error(`[ERROR] ${message}`, ...args);
+    }
+};
+```
+
+**Features:**
+- Development-only debug/info logging
+- Production error logging always enabled
+- Clean console output in production builds
+- Consistent logging format across components
+
+### Rich Card System
+The frontend supports interactive cards for enhanced user experience:
+
+- **Week Grid Cards** - Visual schedule display
+- **Course Information Cards** - Detailed course data
+- **Request Status Cards** - Real-time request tracking
+- **Action Cards** - Interactive buttons and forms
+
+### Authentication Integration
+- JWT token management
+- Automatic session renewal
+- Role-based UI rendering
+- Secure API communication
+    └── utils/
+        └── logger.js       # Environment-based logging utility
 ```
 
 ## Authentication Flow

@@ -14,9 +14,9 @@ echo "Waiting for database at $HOST:$PORT..."
 until nc -z "$HOST" "$PORT"; do
   sleep 1
 done
-echo "Database is up. Seeding personas..."
+echo "Database is up. Running database seeding..."
 
-# Seed the database. Ignore errors in case it has already been seeded.
+# Seed the database with everything needed for demo. Ignore errors in case it has already been seeded.
 cd /app && python -m brs_backend.seed_personas || true
 
 echo "Starting backend service..."

@@ -5,10 +5,10 @@ from typing import Any, Dict, Optional
 
 def create_tool_response(
     success: bool, 
-    data: Optional[Any] = None, 
-    error: Optional[str] = None,
-    message: Optional[str] = None
-) -> Dict[str, Any]:
+    data: Any | None = None, 
+    error: str | None = None,
+    message: str | None = None
+) -> dict[str, Any]:
     """Create a standardized tool response format.
     
     Args:
@@ -34,11 +34,11 @@ def create_tool_response(
     return response
 
 
-def create_success_response(data: Any = None, message: Optional[str] = None) -> Dict[str, Any]:
+def create_success_response(data: Any = None, message: str | None = None) -> dict[str, Any]:
     """Create a successful tool response."""
     return create_tool_response(success=True, data=data, message=message)
 
 
-def create_error_response(error: str, data: Any = None) -> Dict[str, Any]:
+def create_error_response(error: str, data: Any = None) -> dict[str, Any]:
     """Create an error tool response."""
     return create_tool_response(success=False, error=error, data=data)

@@ -1,0 +1,84 @@
+[0:00]
+In this demonstration, we work with a dataset on headphones, comparing ten brands with pricing details from four retailers.
+
+We begin by accessing the management portal. The initial dashboard provides a consolidated overview of platform usage, including the number of active users, logins, and hosted documents. The timescale can be adjusted—yearly, monthly, or weekly.
+
+[0:26]
+The next panel highlights agent activity across the platform. Here, you can track the number of active agents, their operational status, and performance indicators such as query volume, average response time, and user feedback through likes and dislikes. Again this can be done globally or for a specific agent.
+
+[0:50]
+The final panel focuses on response analysis, illustrating how the platform is leveraged in practice. Queries are grouped by similarity, enabling quick identification of user needs. The view also distinguishes highly rated answers from those requiring improvement, either across all agents or for a specific one.
+
+[1:12]
+Every effective chatbot relies on high‑quality data. Within LAMP, data is treated as a first‑class asset.
+
+[1:21]
+Each data domain is governed by both a Data Owner and a Data Custodian. They act as the primary points of contact for all matters concerning the dataset.
+
+[1:35]
+Data domains may be assigned one of three confidentiality levels: Public, Internal, or Restricted. New data files can be added at any time. In this case, we introduce two files: one with workplace‑related headphone data and another on how sound is generated and propagated. These files are queued for processing before being added to the data domain in a form suitable for the agent.
+
+[2:01]
+Until processing is complete, this new data remains unavailable to the agent.
+
+[2:06]
+To confirm, we connect to the user interface and query the agent for the best headphones for work. As expected, the response remains generic, without workplace-specific references. You can see that the answer is supported by references to the original data sources, ensuring full transparency and traceability. The user is also prompted with follow-up questions to enhance their experience and encourage further exploration of the topic. He can also provide feedback by liking or disliking the answer. We will come back to this later.
+
+[2:45]
+Now let's connect back to the management portal and create a new agent in no more than six steps. This streamlined process makes it easy to set up agents consistently.
+
+[2:58]
+Let's first name our agent — for example “Electronic Retail Assistant” — and give it a description that will be visible to end users and help them understand its purpose. We then need to select its type between the fast‑extending list of agent types. For this one let's pick the knowledge Assistant.
+
+[3:20]
+Then we need to select a few more parameters. First is the large language model — the brain of our agent — and then its prompt, which is a behavioural instruction shaping its responses. By default, several options are proposed but they can be customized. Here we tune the prompt to ensure the agent provides answers that are specific, concise and relevant. The more advanced parameters such as max tokens, top k, temperature and top‑p are left unchanged but are fully explained and customizable.
+
+[3:56]
+Next, we connect the modified headphones dataset to the agent.
+
+[4:01]
+The third panel allows us to review the settings and create the agent.
+
+[4:07]
+Once created — and before releasing our agent to the world — we can assign it a questionnaire that will be used to validate its performance over time. This ensures that we can monitor and refine the agent based on objective criteria.
+
+[4:24]
+After naming and describing our questionnaire, we decide whether to monitor the agent's performance daily while gathering feedback.
+
+[4:33]
+Our five questions are uploaded from a CSV file, but they can also be entered manually one by one or selected from a pre‑existing questionnaire. This flexibility allows us to tailor the evaluation to our needs and adjust the level of detail we collect.
+
+[4:55]
+Next, specify which users will be able to access the agent.
+
+[5:00]
+And finally we activate the agent. It is now available to end users, ready to answer questions.
+
+[5:08]
+We can evaluate our agent using the Response Governance menu on the same set of questions. This compares different configurations so we can tune its model and personality to fit business needs, user expectations and budget constraints. Such comparisons are invaluable in production.
+
+[5:27]
+After naming the evaluation, we select which agent configuration we want to assess.
+
+[5:33]
+We then create a new questionnaire, give it a name and a description and upload the same list of questions we used previously.
+
+[5:45]
+The agent is then queried to answer each question in the list. This may take a few minutes depending on the number of questions and the agent's average response time.
+
+[5:58]
+The answers can first be analysed by an expert who reviews each response and marks it accurate or inaccurate. For example, the first two answers are correct and leverage the provided documents, so they are marked accurate. The third answer lacks comfort information and is flagged for further investigation. A quick look at the last two answers shows they are accurate as well. As you analyze the agent’s performance in the dashboard, you can expand the list of questions whenever new categories emerge, ensuring comprehensive evaluation.
+
+[6:41]
+Finally, we return to the user interface and ask the same question again. The response is now specific because it draws on the newly added workplace dataset.
+
+[6:52]
+As we log in, we now have access to two agents. We select the Electronics Retail Assistant and ask it a few questions. First, we pose a general question about headphones. Then we narrow our focus to the best pricing options for specific brands we might have heard about. Each answer is supported by a list of references to the original data sources the agent used to build its response. This transparency is a key feature of LAMP, ensuring that users can verify information and follow the underlying data trail. The interface also suggests follow‑up questions to enhance the user experience and help them discover more about the topic they're interested in. At any point you can click a reference to view the underlying data source for more detail. This encourages curiosity and allows deeper exploration of the subject. By comparing responses across different questions, users can see how the agent handles both broad and specific queries, which builds confidence in its capabilities. This demonstration shows how the agent adapts as more data is added and how references maintain traceability, ensuring full transparency.
+
+[8:13]
+As we have seen, we can thumbs‑up and thumbs‑down answers we like or dislike. This anonymous feedback is collected and analyzed in the management portal to continuously monitor and improve the performance of our agents over time. We can continue our exploration by asking more specific questions about retailers and help the customer close the deal. The system tracks these interactions, measures satisfaction metrics and surfaces emerging trends, enabling data teams to refine the agent accordingly. By actively engaging with the agent and providing feedback, users help shape its evolution and ensure that it remains relevant to their needs. The ability to gather, analyze, and act upon feedback in a closed loop is a powerful tool for maintaining high‑quality interactions. It creates a virtuous cycle where each question and rating contributes to continuous improvement. For example, if multiple users indicate that pricing information is outdated or incomplete, the data team can prioritize updating the dataset. Similarly, if a new brand becomes popular, they can incorporate it quickly, ensuring that the agent remains current. This dynamic feedback loop turns user interactions into actionable insights and drives the ongoing enhancement of both the data and the agent’s performance.
+
+[09:45]
+And if at the end, I still want to know which headphones are the best for work, the agent will now be able to provide a relevant and specific answer because it incorporates the new workplace data and sound propagation insights. The user can click on the references to be redirected to the original data source and get more details if needed. This illustrates how the agent’s responses evolve as more data is added and underscores the importance of continuously updating data domains. By following the references, users can trust the provenance of the information and explore further.
+
+[10:26]

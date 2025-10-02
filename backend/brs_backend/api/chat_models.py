@@ -1,7 +1,7 @@
 """Chat API models and schemas for BRS conversational interface."""
 
 from datetime import datetime
-from typing import List, Optional, Dict, Any
+from typing import Any
 from pydantic import BaseModel
 from enum import Enum
 
@@ -9,7 +9,7 @@ from enum import Enum
 class ChatSessionRequest(BaseModel):
     """Request to create a new chat session."""
 
-    persona: Optional[str] = (
+    persona: str | None = (
         "auto"  # auto, student, advisor, department_head, registrar
     )
 
@@ -26,7 +26,7 @@ class ChatMessageRequest(BaseModel):
 
     session_id: str
     message: str
-    attachments: List[Dict[str, Any]] = []
+    attachments: list[dict[str, Any]] = []
     client_idempotency_key: str
 
 
@@ -45,8 +45,8 @@ class ChatAction(BaseModel):
     label: str
     type: ActionType
     endpoint: str
-    body: Optional[Dict[str, Any]] = None
-    params: Optional[Dict[str, Any]] = None
+    body: dict[str, Any] | None = None
+    params: dict[str, Any] | None = None
 
 
 class CardType(str, Enum):
@@ -58,22 +58,23 @@ class CardType(str, Enum):
     ALTERNATIVES = "alternatives"
     COURSE_INFO = "course_info"
     PREREQUISITE_TREE = "prerequisite_tree"
+    GENERIC = "generic"
 
 
 class ChatCard(BaseModel):
     """Card component for rich chat responses."""
 
     type: CardType
-    payload: Dict[str, Any]
+    payload: dict[str, Any]
 
 
 class ChatAudit(BaseModel):
     """Audit information for chat interactions."""
 
     correlation_id: str
-    role: str
+    user_type: str  # student, instructor, department_head, system_admin
     actor_id: str
-    tool_calls: List[str] = []
+    tool_calls: list[str] = []
     timestamp: datetime
 
 
@@ -81,8 +82,8 @@ class ChatReply(BaseModel):
     """Agent reply to a chat message."""
 
     message: str
-    cards: List[ChatCard] = []
-    actions: List[ChatAction] = []
+    cards: list[ChatCard] = []
+    actions: list[ChatAction] = []
     audit: ChatAudit
 
 
@@ -97,7 +98,7 @@ class StreamEvent(BaseModel):
     """Event for streaming chat responses."""
 
     type: str  # token, card, action, done, error
-    data: Optional[Dict[str, Any]] = None
+    data: dict[str, Any] | None = None
 
 
 class ActionExecutionRequest(BaseModel):
@@ -111,8 +112,8 @@ class ActionExecutionResponse(BaseModel):
     """Response from executing an action."""
 
     success: bool
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
+    result: dict[str, Any] | None = None
+    error: str | None = None
 
 
 # Database models for chat persistence
@@ -130,7 +131,9 @@ class ChatSession(Base):
 
     session_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     user_id = Column(String, nullable=False)
-    role = Column(String, nullable=False)
+    user_type = Column(
+        String, nullable=False
+    )  # student, instructor, department_head, system_admin
     actor_id = Column(String, nullable=False)
     persona = Column(String, default="auto")
     created_at = Column(TIMESTAMP, server_default=func.now())

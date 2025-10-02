@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 import { useChat } from '../hooks/useChat.js';
 import CardRenderer from './CardRenderer.jsx';
 import ActionButtons from './ActionButtons.jsx';
@@ -196,8 +197,9 @@ export default function UnifiedChatInterface({ user, token, onLogout }) {
                         }}
                     >
                         <div style={{
-                            maxWidth: '70%',
-                            minWidth: message.sender === 'assistant' ? '300px' : 'auto'
+                            maxWidth: message.sender === 'assistant' ? '98%' : '70%',
+                            minWidth: message.sender === 'assistant' ? '300px' : 'auto',
+                            width: message.sender === 'assistant' ? '100%' : 'auto'
                         }}>
                             <div style={{
                                 padding: '1rem',
@@ -224,7 +226,36 @@ export default function UnifiedChatInterface({ user, token, onLogout }) {
                                 )}
 
                                 <div style={{ lineHeight: '1.5' }}>
-                                    {message.content}
+                                    {/* Render markdown content */}
+                                    <ReactMarkdown
+                                        components={{
+                                            // Style strong/bold text
+                                            strong: ({ children }) => (
+                                                <strong style={{ fontWeight: '600', color: '#2c3e50' }}>
+                                                    {children}
+                                                </strong>
+                                            ),
+                                            // Style paragraphs with proper spacing
+                                            p: ({ children }) => (
+                                                <p style={{ margin: '0.5rem 0' }}>
+                                                    {children}
+                                                </p>
+                                            ),
+                                            // Style lists
+                                            ul: ({ children }) => (
+                                                <ul style={{ margin: '0.5rem 0', paddingLeft: '1.5rem' }}>
+                                                    {children}
+                                                </ul>
+                                            ),
+                                            li: ({ children }) => (
+                                                <li style={{ margin: '0.25rem 0' }}>
+                                                    {children}
+                                                </li>
+                                            )
+                                        }}
+                                    >
+                                        {message.content}
+                                    </ReactMarkdown>
                                 </div>
 
                                 {/* Render cards */}

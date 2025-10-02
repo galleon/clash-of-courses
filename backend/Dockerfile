@@ -12,6 +12,7 @@ WORKDIR /app
 
 # Copy application code first
 COPY brs_backend/ brs_backend/
+COPY tests/ tests/
 COPY pyproject.toml .
 COPY README.md .
 COPY entrypoint.sh .

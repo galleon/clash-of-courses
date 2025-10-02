@@ -2,6 +2,7 @@
 
 import asyncio
 import uuid
+import logging
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
@@ -27,23 +28,31 @@ from brs_backend.api.chat_models import (
     ChatAction,
     ActionType,
 )
-from brs_backend.agents.chat_agent import get_agent_for_role, process_message
+from brs_backend.agents.chat_agent import BRSChatAgent
+
+logger = logging.getLogger(__name__)
+
+# Initialize the chat agent
+chat_agent = BRSChatAgent()
 
 
 class JWTClaims(BaseModel):
     sub: str
     full_name: str
-    role: str
+    user_type: str  # Changed from role to user_type
     actor_id: str
     exp: int
 
 
-router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
+router = APIRouter(prefix="/chat", tags=["chat"])
+
+# Add debug logging for router registration
+# Chat router initialized
 
 
 def get_current_user(
     authorization: str = Header(None),
-    token: Optional[str] = Query(default=None, alias="token"),
+    token: str | None = Query(default=None, alias="token"),
 ) -> JWTClaims:
     """Extract and validate JWT claims from Authorization header or token query param."""
     # Support EventSource connections that cannot send custom headers by accepting
@@ -78,9 +87,9 @@ async def create_chat_session(
     """Create a new chat session."""
     session = ChatSession(
         user_id=current_user.sub,
-        role=current_user.role,
+        user_type=current_user.user_type,
         actor_id=current_user.actor_id,
-        persona=request.persona or current_user.role,
+        persona=request.persona or current_user.user_type,
     )
 
     db.add(session)
@@ -99,6 +108,11 @@ async def send_chat_message(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Send a message to the chat agent and get a response."""
+    logger.info(f"Chat endpoint called: '{request.message}' from {current_user.full_name}")
+    logger.info(
+        f"💬 Received message: '{request.message}' from user {current_user.full_name} ({current_user.user_type})"
+    )
+
     # Validate session exists and belongs to user
     session = (
         db.query(ChatSession)
@@ -110,9 +124,11 @@ async def send_chat_message(
     )
 
     if not session:
-        raise HTTPException(status_code=404, detail="Chat session not found")
-
-    # Check for idempotency
+        logger.error(f"Chat session not found: {request.session_id}")
+        raise HTTPException(
+            status_code=404, detail="Chat session not found"
+        )  # Check for idempotency
+    logger.debug(f"Checking idempotency key: {request.client_idempotency_key}")
     existing_message = (
         db.query(ChatMessage)
         .filter(ChatMessage.client_idempotency_key == request.client_idempotency_key)
@@ -120,6 +136,7 @@ async def send_chat_message(
     )
 
     if existing_message:
+        logger.debug(f"Returning cached response for idempotency key: {request.client_idempotency_key}")
         # Return existing response
         return ChatMessageResponse(
             message_id=str(existing_message.message_id),
@@ -142,13 +159,15 @@ async def send_chat_message(
     db.add(user_message)
     db.commit()
 
-    # Process with agent
+    # Process with enhanced agent
     correlation_id = str(uuid.uuid4())
-    agent = get_agent_for_role(current_user.role)
+
+    logger.info(
+        f"🤖 Processing message with SmolAgents for role: {current_user.user_type}"
+    )
 
     try:
-        reply = await process_message(
-            agent=agent,
+        reply = await chat_agent.process_message(
             message=request.message,
             user_claims=current_user,
             session_id=request.session_id,
@@ -156,14 +175,30 @@ async def send_chat_message(
             db=db,
         )
 
+        logger.info(f"✅ Agent response: '{reply.message[:100]}...'")
+
         # Save assistant response
+        from datetime import datetime
+
+        # Convert audit data to JSON-serializable format
+        audit_dict = reply.audit.model_dump()
+        # Manually convert datetime to ISO format string
+        if "timestamp" in audit_dict and isinstance(audit_dict["timestamp"], datetime):
+            audit_dict["timestamp"] = audit_dict["timestamp"].isoformat()
+
+        # Convert cards and actions to JSON-serializable format
+        cards_json = [card.model_dump() for card in reply.cards] if reply.cards else []
+        actions_json = (
+            [action.model_dump() for action in reply.actions] if reply.actions else []
+        )
+
         assistant_message = ChatMessage(
             session_id=session.session_id,
             role="assistant",
             content=reply.message,
-            cards=reply.cards,
-            actions=reply.actions,
-            audit_data=reply.audit.model_dump(),
+            cards=cards_json,
+            actions=actions_json,
+            audit_data=audit_dict,
         )
         db.add(assistant_message)
         db.commit()
@@ -172,13 +207,14 @@ async def send_chat_message(
             message_id=str(assistant_message.message_id), reply=reply
         )
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"❌ Error processing message: {str(e)}")
         # Return error response
         error_reply = ChatReply(
             message="I apologize, but I encountered an error processing your request. Please try again or contact support if the issue persists.",
             audit=ChatAudit(
                 correlation_id=correlation_id,
-                role=current_user.role,
+                user_type=current_user.user_type,
                 actor_id=current_user.actor_id,
                 timestamp=datetime.now(timezone.utc),
             ),
@@ -188,7 +224,9 @@ async def send_chat_message(
             session_id=session.session_id,
             role="assistant",
             content=error_reply.message,
-            audit_data=error_reply.audit.model_dump(),
+            audit_data=error_reply.audit.model_dump(
+                mode="json"
+            ),  # Use JSON serialization mode
         )
         db.add(assistant_message)
         db.commit()
@@ -230,7 +268,7 @@ async def chat_sse_stream(
 
     return StreamingResponse(
         event_stream(),
-        media_type="text/plain",
+        media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
@@ -279,7 +317,7 @@ async def execute_chat_action(
 
 async def execute_internal_action(
     action: ChatAction, user_claims: JWTClaims, correlation_id: str, db: Session
-) -> Optional[Dict[str, Any]]:
+) -> dict[str, Any] | None:
     """Execute an action by calling internal APIs."""
     # This would integrate with your existing REST endpoints
     # For now, return a mock response

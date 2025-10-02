@@ -1,4 +1,5 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+// Use proxy path - Vite will forward /api to backend:8000
+const API_BASE = '';
 
 async function fetchJSON(path) {
     const res = await fetch(`${API_BASE}${path}`);

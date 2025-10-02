@@ -1,19 +1,22 @@
 {
-  "name": "brs-frontend",
-  "private": true,
-  "version": "0.0.1",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
-  },
-  "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0"
-  },
-  "devDependencies": {
-    "vite": "^5.1.0",
-    "@vitejs/plugin-react": "^4.0.0"
-  }
+    "name": "brs-frontend",
+    "private": true,
+    "version": "0.0.1",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "moment": "^2.30.1",
+        "react": "^18.2.0",
+        "react-big-calendar": "^1.19.4",
+        "react-dom": "^18.2.0",
+        "react-markdown": "^9.0.1"
+    },
+    "devDependencies": {
+        "@vitejs/plugin-react": "^4.0.0",
+        "vite": "^5.1.0"
+    }
 }

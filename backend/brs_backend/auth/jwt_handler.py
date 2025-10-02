@@ -19,9 +19,9 @@ class JWTClaims(BaseModel):
     role: str  # student, advisor, department_head, registrar
     actor_id: str  # UUID of the actor (student_id, etc.)
     full_name: str
-    email: Optional[str] = None
-    department_id: Optional[str] = None
-    program_id: Optional[str] = None
+    email: str | None = None
+    department_id: str | None = None
+    program_id: str | None = None
     iat: int  # issued at
     exp: int  # expires at
     jti: str  # JWT ID for revocation
@@ -32,9 +32,9 @@ def create_jwt_token(
     role: str,
     actor_id: str,
     full_name: str,
-    email: Optional[str] = None,
-    department_id: Optional[str] = None,
-    program_id: Optional[str] = None,
+    email: str | None = None,
+    department_id: str | None = None,
+    program_id: str | None = None,
 ) -> str:
     """Create a JWT token with the specified claims."""
     now = datetime.now(timezone.utc)
@@ -56,7 +56,7 @@ def create_jwt_token(
     return jwt.encode(claims.model_dump(), JWT_SECRET, algorithm=JWT_ALGORITHM)
 
 
-def decode_jwt_token(token: str) -> Optional[JWTClaims]:
+def decode_jwt_token(token: str) -> JWTClaims | None:
     """Decode and validate a JWT token."""
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
@@ -67,7 +67,7 @@ def decode_jwt_token(token: str) -> Optional[JWTClaims]:
         return None
 
 
-def extract_bearer_token(authorization_header: Optional[str]) -> Optional[str]:
+def extract_bearer_token(authorization_header: str | None) -> str | None:
     """Extract JWT token from Authorization header."""
     if not authorization_header or not authorization_header.startswith("Bearer "):
         return None
@@ -141,7 +141,7 @@ MOCK_USERS = {
 }
 
 
-def authenticate_user(username: str, password: str) -> Optional[Dict[str, Any]]:
+def authenticate_user(username: str, password: str) -> dict[str, Any] | None:
     """Mock authentication - in production, verify against database."""
     user = MOCK_USERS.get(username)
     if not user:

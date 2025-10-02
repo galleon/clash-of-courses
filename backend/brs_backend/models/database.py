@@ -23,7 +23,40 @@ from brs_backend.database.connection import Base
 
 
 # ===========================
-# V3 UPDATED MODELS
+# USER AUTHENTICATION - V3 MODELS
+# ===========================
+
+
+class User(Base):
+    """Base user authentication table - composition model."""
+
+    __tablename__ = "users"
+
+    user_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    username = Column(String(50), unique=True, nullable=False)
+    email = Column(String(100), unique=True, nullable=False)
+    full_name = Column(String(100), nullable=False)
+    user_type = Column(
+        String(30), nullable=False
+    )  # student, instructor, department_head, system_admin
+
+    # Authentication fields
+    password_hash = Column(String(255))  # For future bcrypt hashes
+    is_active = Column(Integer, default=1)  # 1=active, 0=inactive
+
+    # Entity references (only one should be set) - will be set after entity creation
+    student_id = Column(UUID(as_uuid=True), nullable=True)
+    instructor_id = Column(UUID(as_uuid=True), nullable=True)
+    department_head_id = Column(UUID(as_uuid=True), nullable=True)
+    admin_id = Column(UUID(as_uuid=True), nullable=True)
+
+    # Timestamps
+    created_at = Column(TIMESTAMP, server_default=func.now())
+    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+
+
+# ===========================
+# DOMAIN MODELS
 # ===========================
 
 
@@ -76,6 +109,8 @@ class Term(Base):
 
 
 class Student(Base):
+    """Student domain entity."""
+
     __tablename__ = "student"
 
     student_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -191,10 +226,12 @@ class CampusRoom(Base):
 
 
 class Instructor(Base):
+    """Instructor domain entity."""
+
     __tablename__ = "instructor"
 
     instructor_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(Text, nullable=False)
+    name = Column(String(100), nullable=False)  # Instructor's full name
     department_id = Column(UUID(as_uuid=True), nullable=False)
     campus_id = Column(UUID(as_uuid=True), ForeignKey("campus.campus_id"))
 
@@ -270,10 +307,12 @@ class SectionMeeting(Base):
         CheckConstraint("day_of_week BETWEEN 0 AND 6"),
         Index("section_meeting_section_id_idx", "section_id"),
         Index(
+            "section_meeting_day_idx", "day_of_week"
+        ),  # Regular B-tree index for day_of_week
+        Index(
             "section_meeting_tr_gist",
-            "day_of_week",
             "time_range",
-            postgresql_using="gist",
+            postgresql_using="gist",  # GiST index only for time_range
         ),
     )
 
@@ -490,26 +529,25 @@ class RecommendationFeedback(Base):
     student = relationship("Student", back_populates="recommendation_feedback")
 
 
-# Keep the original User model for backward compatibility with authentication
-class User(Base):
-    __tablename__ = "users"
+class DepartmentHead(Base):
+    """Department Head domain entity."""
 
-    id = Column(Integer, primary_key=True, index=True)
-    username = Column(String(50), unique=True, nullable=False)
-    full_name = Column(String(100), nullable=False)
-    role = Column(
-        String(30), nullable=False
-    )  # student, advisor, department_head, registrar
-    email = Column(String, unique=True)
+    __tablename__ = "department_head"
 
-    # Additional fields for compatibility
-    age = Column(Integer)
-    gender = Column(String(10))
-    major = Column(String(100))
-    gpa = Column(DECIMAL(3, 2))
-    credit_hours_completed = Column(Integer, nullable=False, default=0)
-    technology_proficiency = Column(String(50))
-    description = Column(Text)
+    department_head_id = Column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    department_id = Column(UUID(as_uuid=True), nullable=False)
+    campus_id = Column(UUID(as_uuid=True), ForeignKey("campus.campus_id"))
 
-    created_at = Column(TIMESTAMP, server_default=func.now())
-    updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
+    # Relationships
+    campus = relationship("Campus")
+
+
+class SystemAdmin(Base):
+    """System Administrator domain entity."""
+
+    __tablename__ = "system_admin"
+
+    admin_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    permissions = Column(JSONB)  # JSON field for flexible permissions

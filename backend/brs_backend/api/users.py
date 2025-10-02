@@ -1,6 +1,5 @@
 """User management API routes."""
 
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -21,7 +20,7 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     return db_user
 
 
-@router.get("/", response_model=List[UserOut])
+@router.get("/", response_model=list[UserOut])
 def get_users(db: Session = Depends(get_db)):
     """Get all users."""
     users = db.query(User).all()

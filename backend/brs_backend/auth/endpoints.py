@@ -13,7 +13,7 @@ from ..auth.jwt_auth import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
 )
 
-router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
 
 
@@ -46,7 +46,7 @@ async def login(credentials: LoginRequest):
         )
 
     logger.info(
-        f"✅ LOGIN SUCCESS: username='{credentials.username}', role='{user['role']}'"
+        f"✅ LOGIN SUCCESS: username='{credentials.username}', user_type='{user['user_type']}'"
     )
 
     # Create JWT token with user info
@@ -54,7 +54,7 @@ async def login(credentials: LoginRequest):
     token_data = {
         "sub": user["username"],
         "full_name": user["full_name"],
-        "role": user["role"],
+        "user_type": user["user_type"],  # Changed from role to user_type
         "actor_id": user["actor_id"],
     }
     access_token = create_access_token(
@@ -68,7 +68,7 @@ async def login(credentials: LoginRequest):
         user={
             "username": user["username"],
             "full_name": user["full_name"],
-            "role": user["role"],
+            "user_type": user["user_type"],  # Changed from role to user_type
             "actor_id": user["actor_id"],
         },
     )

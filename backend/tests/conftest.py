@@ -1,47 +1,113 @@
 """Test configuration and fixtures."""
 
 import os
+import asyncio
+import uuid
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
-
-TEST_DATABASE_URL = "sqlite:///./test.db"
-
-# Ensure the application uses the test database before importing the app
-os.environ.setdefault("DATABASE_URL", TEST_DATABASE_URL)
 
 from brs_backend.database.connection import get_db  # noqa: E402
 from brs_backend.main import app  # noqa: E402
 from brs_backend.models.database import Base  # noqa: E402
 
-# Use in-memory SQLite for testing
-engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
-TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-
-def override_get_db():
-    """Override database dependency for testing."""
+@pytest.fixture(scope="session")
+def test_database_url():
+    """Create a temporary PostgreSQL test database for the test session."""
+    test_db_name = f"test_brs_{str(uuid.uuid4()).replace('-', '_')}"
+    
+    # Connect to PostgreSQL to create the test database
+    admin_engine = create_engine("postgresql://postgres:postgres@db:5432/postgres")
+    
     try:
-        db = TestingSessionLocal()
-        yield db
+        # Create test database
+        with admin_engine.connect() as conn:
+            # Use autocommit to create database outside transaction
+            conn.execute(text("COMMIT"))
+            conn.execute(text(f"CREATE DATABASE {test_db_name}"))
+            print(f"✅ Created test database: {test_db_name}")
+        
+        # Return the test database URL
+        test_db_url = f"postgresql://postgres:postgres@db:5432/{test_db_name}"
+        
+        # Set environment variable for the app
+        os.environ["DATABASE_URL"] = test_db_url
+        
+        yield test_db_url
+        
     finally:
-        db.close()
+        # Clean up: drop the test database
+        try:
+            with admin_engine.connect() as conn:
+                # Terminate all connections to the test database
+                conn.execute(text("COMMIT"))
+                conn.execute(text(f"""
+                    SELECT pg_terminate_backend(pid)
+                    FROM pg_stat_activity
+                    WHERE datname = '{test_db_name}' AND pid <> pg_backend_pid()
+                """))
+                # Drop the test database
+                conn.execute(text(f"DROP DATABASE IF EXISTS {test_db_name}"))
+                print(f"✅ Cleaned up test database: {test_db_name}")
+        except Exception as e:
+            print(f"⚠️ Warning: Failed to clean up test database {test_db_name}: {e}")
+        finally:
+            admin_engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def engine(test_database_url):
+    """Create PostgreSQL engine for testing."""
+    engine = create_engine(test_database_url)
+    yield engine
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def TestingSessionLocal(engine):
+    """Create session local class for testing."""
+    return sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
 @pytest.fixture(scope="function")
-def test_db():
+def test_db(engine):
     """Create test database tables."""
     Base.metadata.create_all(bind=engine)
     yield
+    # Clean up tables after each test function
     Base.metadata.drop_all(bind=engine)
 
 
 @pytest.fixture(scope="function")
-def client(test_db):
+def db_session(TestingSessionLocal, test_db):
+    """Create test database session."""
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.rollback()  # Rollback any pending transactions
+        session.close()
+
+
+def make_override_get_db(TestingSessionLocal):
+    """Create override function for database dependency."""
+    def override_get_db():
+        """Override database dependency for testing."""
+        try:
+            db = TestingSessionLocal()
+            yield db
+        finally:
+            db.close()
+    return override_get_db
+
+
+@pytest.fixture(scope="function")
+def client(test_db, TestingSessionLocal):
     """Create test client with database override."""
-    app.dependency_overrides[get_db] = override_get_db
+    app.dependency_overrides[get_db] = make_override_get_db(TestingSessionLocal)
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
