@@ -14,10 +14,30 @@ echo "Waiting for database at $HOST:$PORT..."
 until nc -z "$HOST" "$PORT"; do
   sleep 1
 done
-echo "Database is up. Running database seeding..."
+echo "Database is up. Dropping and recreating tables with fresh data..."
 
-# Seed the database with everything needed for demo. Ignore errors in case it has already been seeded.
+# Drop all tables with CASCADE to handle foreign key dependencies
+cd /app && python -c "
+from brs_backend.models.database import Base
+from brs_backend.database.connection import engine
+from sqlalchemy import text
+
+print('Dropping all existing tables with CASCADE...')
+with engine.connect() as conn:
+    # Drop all tables in the public schema with CASCADE
+    conn.execute(text('DROP SCHEMA public CASCADE;'))
+    conn.execute(text('CREATE SCHEMA public;'))
+    conn.commit()
+
+print('Creating fresh tables...')
+Base.metadata.create_all(bind=engine)
+print('Tables recreated successfully!')
+"
+
+# Seed the database with fresh data
+echo "Seeding database with personas and users..."
 cd /app && python -m brs_backend.seed_personas || true
+cd /app && python -m brs_backend.seed_users || true
 
 echo "Starting backend service..."
 uvicorn brs_backend.main:app --host 0.0.0.0 --port 8000 --workers 1

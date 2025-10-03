@@ -41,6 +41,10 @@ records.
 import uuid
 from uuid import UUID
 from datetime import date, datetime, time, timedelta, timezone
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from brs_backend.database.connection import engine, Base
+from brs_backend.models.database import *
 
 
 def _uuid() -> str:
@@ -135,7 +139,7 @@ def get_seed_data() -> dict:
     # main campus. We include additional students to create realistic
     # enrollment numbers for testing.
     # Sarah Ahmed (our main test student) - Use fixed UUID for consistent testing
-    student_sarah_id = UUID("4441ab90-e2fe-4da5-a0e1-6a129d61552f")
+    student_sarah_id = "4441ab90-e2fe-4da5-a0e1-6a129d61552f"
     student_mohammed_id = _uuid()
     student_fatima_id = _uuid()
 
@@ -955,6 +959,121 @@ def _pretty_print(data: dict) -> None:
         print()
 
 
+def insert_seed_data():
+    """Insert the seed data into the database."""
+    from brs_backend.database.connection import engine
+    from brs_backend.models.database import (
+        Campus, Program, Term, Student, Course, CoursePrereq,
+        CampusRoom, Instructor, InstructorSchedule, Section, SectionMeeting,
+        Enrollment, RegistrationRequest, RequestDecision, RequestConflict,
+        CalendarEvent, CalendarBinding, StudentPreference, StudentSignal,
+        Recommendation, RecommendationFeedback, DepartmentHead, SystemAdmin
+    )
+    from sqlalchemy.orm import Session
+    import uuid
+    
+    def convert_uuids_to_strings(data):
+        """Convert UUID objects to strings recursively."""
+        if isinstance(data, list):
+            return [convert_uuids_to_strings(item) for item in data]
+        elif isinstance(data, dict):
+            return {key: convert_uuids_to_strings(value) for key, value in data.items()}
+        elif isinstance(data, uuid.UUID):
+            return str(data)
+        elif hasattr(data, '__class__') and 'UUID' in str(data.__class__):
+            # Handle SQLAlchemy UUID types and other UUID-like objects
+            return str(data)
+        else:
+            return data
+    
+    # Get the seed data
+    data = get_seed_data()
+    
+    # Convert all UUIDs to strings
+    data = convert_uuids_to_strings(data)
+    
+    # Table model mapping
+    table_models = {
+        'campus': Campus,
+        'program': Program,
+        'term': Term, 
+        'student': Student,
+        'course': Course,
+        'course_prereq': CoursePrereq,
+        'campus_room': CampusRoom,
+        'instructor': Instructor,
+        'instructor_schedule': InstructorSchedule,
+        'section': Section,
+        'section_meeting': SectionMeeting,
+        'enrollment': Enrollment,
+        'registration_request': RegistrationRequest,
+        'request_decision': RequestDecision,
+        'request_conflict': RequestConflict,
+        'calendar_event': CalendarEvent,
+        'calendar_binding': CalendarBinding,
+        'student_preference': StudentPreference,
+        'student_signal': StudentSignal,
+        'recommendation': Recommendation,
+        'recommendation_feedback': RecommendationFeedback,
+        'department_head': DepartmentHead,
+        'system_admin': SystemAdmin
+    }
+    
+    with Session(engine) as session:
+        # Insert data in order to respect foreign key constraints
+        insert_order = [
+            'campus', 'program', 'term', 'student', 'course', 'course_prereq',
+            'campus_room', 'instructor', 'instructor_schedule', 'section', 
+            'section_meeting', 'enrollment', 'registration_request', 
+            'request_decision', 'request_conflict', 'calendar_event',
+            'calendar_binding', 'student_preference', 'student_signal',
+            'recommendation', 'recommendation_feedback', 'department_head',
+            'system_admin'
+        ]
+        
+        for table_name in insert_order:
+            if table_name in data and table_name in table_models:
+                model_class = table_models[table_name]
+                rows = data[table_name]
+                
+                print(f"Inserting {len(rows)} rows into {table_name}...")
+                
+                for row_data in rows:
+                    # Special handling for section_meeting time_range
+                    if table_name == 'section_meeting' and 'time_range' in row_data:
+                        time_range = row_data['time_range']
+                        if time_range and time_range.startswith('[') and time_range.endswith(')'):
+                            # Convert [10:00,11:30) to proper PostgreSQL timestamp format
+                            times = time_range.strip('[]()').split(',')
+                            if len(times) == 2:
+                                start = times[0].strip()
+                                end = times[1].strip()
+                                # Add seconds if not present
+                                if len(start.split(':')) == 2:
+                                    start += ':00'
+                                if len(end.split(':')) == 2:
+                                    end += ':00'
+                                row_data['time_range'] = f'[{start},{end})'
+                    
+                    # Create model instance from dictionary
+                    instance = model_class(**row_data)
+                    session.add(instance)
+                
+                try:
+                    session.commit()
+                    print(f"  ✓ Successfully inserted {len(rows)} {table_name} records")
+                except Exception as e:
+                    session.rollback()
+                    print(f"  ✗ Error inserting {table_name}: {e}")
+                    # Continue with other tables
+                    
+        print("Seed data insertion completed!")
+
+
 if __name__ == "__main__":  # pragma: no cover
     seed = get_seed_data()
     _pretty_print(seed)
+    
+    # Insert the data into the database
+    print("\nInserting data into database...")
+    insert_seed_data()
