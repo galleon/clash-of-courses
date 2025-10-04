@@ -897,13 +897,18 @@ def request_course_addition(
                 )
 
                 if enrollment_result["success"]:
+                    # Get updated schedule after successful enrollment
+                    updated_schedule = get_current_schedule(student_id)
+                    
                     return {
                         "success": True,
                         "preferred_card_types": ["week_grid", "course_info", "generic"],
                         "data": {
                             **enrollment_result,
                             "auto_enrolled": True,
-                            "message": f"🎉 {enrollment_result['message']} All requirements met - no advisor approval needed."
+                            "message": f"🎉 {enrollment_result['message']} All requirements met - no advisor approval needed.",
+                            # Include updated schedule data for week_grid card
+                            **(updated_schedule.get("data", {}) if updated_schedule.get("success") else {})
                         }
                     }
                 else:
@@ -958,6 +963,9 @@ def request_course_addition(
                     )
 
                     if enrollment_result["success"]:
+                        # Get updated schedule after successful alternative enrollment
+                        updated_schedule = get_current_schedule(student_id)
+                        
                         return {
                             "success": True,
                             "preferred_card_types": ["alternatives", "week_grid", "generic"],
@@ -970,7 +978,9 @@ def request_course_addition(
                                 "resolution_message": f"🔄 {conflict_explanation}\n\n🎉 I've automatically enrolled you in {course_code} section {best_alternative['section_code']} instead, which has no conflicts!",
                                 "enrollment_details": enrollment_result,
                                 "alternatives": suggested_alternatives,
-                                "violations": violations
+                                "violations": violations,
+                                # Include updated schedule data for week_grid card
+                                **(updated_schedule.get("data", {}) if updated_schedule.get("success") else {})
                             }
                         }
 

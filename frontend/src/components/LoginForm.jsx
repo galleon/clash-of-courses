@@ -22,12 +22,11 @@ export default function LoginForm({ onLogin }) {
 
     const demoUsers = [
         { username: 'sarah.ahmed', password: 'password123', role: 'Student' },
-        { username: 'marcus.thompson', password: 'password123', role: 'Student' },
-        { username: 'emily.chen', password: 'password123', role: 'Student' },
-        { username: 'dr.rodriguez', password: 'advisor123', role: 'Academic Advisor' },
-        { username: 'prof.kim', password: 'advisor123', role: 'Academic Advisor' },
-        { username: 'dr.johnson', password: 'head123', role: 'Department Head' },
-        { username: 'admin.user', password: 'admin123', role: 'System Admin' },
+        { username: 'mohammed.hassan', password: 'password123', role: 'Student' },
+        { username: 'fatima.alzahra', password: 'password123', role: 'Student' },
+        { username: 'ahmad.mahmoud', password: 'instructor123', role: 'Instructor' },
+        { username: 'layla.khalil', password: 'instructor123', role: 'Instructor' },
+        { username: 'admin', password: 'admin123', role: 'System Admin' },
     ];
 
     return (

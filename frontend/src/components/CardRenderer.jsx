@@ -33,7 +33,8 @@ function CardComponent({ card }) {
         case 'prerequisite_tree':
             return <PrerequisiteTreeCard {...card.payload} />;
         default:
-            return <GenericCard card={card} />;
+            // Hide unknown card types instead of showing generic JSON
+            return null;
     }
 }
 
@@ -599,27 +600,6 @@ function PrerequisiteTreeCard({ course, prerequisites, dependents }) {
             <div style={{ marginTop: '1rem', fontSize: '0.875rem', color: '#6c757d' }}>
                 <strong>Legend:</strong> ✅ Completed | ⏳ Available | 🔒 Prerequisite Required
             </div>
-        </div>
-    );
-}
-
-function GenericCard({ card }) {
-    return (
-        <div style={{
-            border: '1px solid #dee2e6',
-            borderRadius: '8px',
-            padding: '1rem',
-            backgroundColor: '#f8f9fa'
-        }}>
-            <h4 style={{ marginTop: 0, color: '#495057' }}>📄 {card.type}</h4>
-            <pre style={{
-                fontSize: '0.875rem',
-                color: '#495057',
-                overflow: 'auto',
-                maxHeight: '200px'
-            }}>
-                {JSON.stringify(card.payload, null, 2)}
-            </pre>
         </div>
     );
 }

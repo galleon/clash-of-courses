@@ -10,6 +10,128 @@ matching the column names.  UUIDs are generated on the fly so the
 records look realistic.  Timestamps and dates are chosen to fall
 within the 2025‑26 academic year.
 
+DATA MODEL DOCUMENTATION
+========================
+
+STUDENTS
+--------
+The student data model tracks enrolled students with comprehensive academic information:
+
+Fields:
+- student_id (UUID): Primary key, unique identifier for each student
+- external_sis_id (str): External Student Information System ID (e.g., "S1001")
+- program_id (UUID): Foreign key to program table
+- campus_id (UUID): Foreign key to campus table
+- standing (str): Academic standing ("regular", "probation", "honor")
+- student_status (str): Current status ("following_plan", "expected_graduate", "new")
+- gpa (float): Grade Point Average (0.0-4.0 scale)
+- credits_completed (int): Total credits earned
+- financial_status (str): Financial standing ("clear", "exempt", "hold")
+- study_type (str): Payment type ("paid", "scholarship", "sponsored")
+- expected_grad_term (UUID|None): Expected graduation term (can be NULL)
+
+Business Rules:
+- GPA ranges from 2.0-4.0 for testing various academic standings
+- Credits completed varies from 15-110 to simulate students at different levels
+- Financial status affects enrollment eligibility
+- Study type determines billing and financial aid processing
+
+COURSES
+-------
+The course catalog defines available academic courses:
+
+Fields:
+- course_id (UUID): Primary key, unique identifier for each course
+- code (str): Course code (e.g., "ENGR101", "CS101", "MATH101")
+- title (str): Full course title
+- credits (int): Credit hours awarded (typically 3-4)
+- department_id (UUID): Foreign key to department
+- level (int): Course level (100, 200, etc.)
+- course_type (str): Category ("major", "general_ed", "elective")
+- semester_pattern (str): Availability ("both", "fall_only", "spring_only")
+- delivery_mode (str): Format ("in_person", "online", "hybrid")
+- campus_id (UUID): Primary campus offering the course
+
+Current Catalog:
+- ENGR101: Introduction to Engineering (3 credits, level 100)
+- ENGR201: Engineering Mechanics (3 credits, level 200)
+- CS101: Introduction to Computer Science (3 credits, level 100)
+- PHYS101: General Physics I (4 credits, level 100)
+- MATH101: Calculus I (4 credits, level 100)
+- PROB101: Probability Theory (3 credits, level 100)
+- STAT101: Introduction to Statistics (3 credits, level 100)
+
+COURSE PREREQUISITES
+-------------------
+Prerequisites enforce course sequencing and academic requirements:
+
+Fields:
+- course_id (UUID): The course that has prerequisites
+- req_course_id (UUID): The required prerequisite course
+- type (str): Requirement type ("prereq", "coreq", "recommended")
+
+Current Prerequisites:
+- ENGR201 requires ENGR101 (prerequisite relationship)
+
+Business Rules:
+- Students must complete prerequisites before enrolling in advanced courses
+- System validates prerequisite completion during registration
+- Prerequisites are enforced at enrollment time
+
+CAMPUS ROOMS
+-----------
+Physical classroom spaces available for course sections:
+
+Fields:
+- room_id (UUID): Primary key, unique identifier for each room
+- campus_id (UUID): Foreign key to campus
+- name (str): Room identifier (e.g., "Einstein 1-01", "Curie 1-02")
+- capacity (int): Maximum occupancy for the room
+
+Current Rooms:
+- 12 classrooms named after famous scientists
+- Capacities range from 35-50 students
+- All rooms located on Main Campus
+- Room assignments prevent double-booking conflicts
+
+Room Inventory:
+- Einstein 1-01 (45 capacity)    - Curie 1-02 (40 capacity)
+- Newton 2-03 (50 capacity)      - Darwin 2-04 (35 capacity)
+- Tesla 2-05 (42 capacity)       - Pasteur 3-06 (38 capacity)
+- Galileo 3-07 (46 capacity)     - Feynman 3-08 (44 capacity)
+- Hawking 4-09 (48 capacity)     - Faraday 4-10 (41 capacity)
+- Mendel 4-11 (39 capacity)      - Bohr 5-12 (43 capacity)
+
+SECTIONS
+--------
+Course sections are specific offerings of courses with enrollment limits:
+
+Fields:
+- section_id (UUID): Primary key
+- course_id (UUID): Foreign key to course
+- term_id (UUID): Foreign key to term
+- section_code (str): Section identifier ("S01", "S02")
+- instructor_id (UUID): Foreign key to instructor
+- capacity (int): Maximum enrollment (25 or 30 students)
+- waitlist_capacity (int): Maximum waitlist size (3-5 students)
+- campus_id (UUID): Foreign key to campus
+
+Section Structure:
+- Each course offers exactly 2 sections (S01, S02)
+- Section capacities are either 25 or 30 students
+- Enrollment targets are 15-25% of capacity for realistic testing
+- Waitlist capacity is ~15-20% of section capacity
+
+ENROLLMENT GENERATION
+--------------------
+The system generates realistic enrollment patterns:
+
+- Total students: ~83 (3 named personas + 80 generated)
+- Sarah Ahmed is always enrolled in ENGR101 S01
+- Other students are randomly distributed across sections
+- Each section reaches 15-25% capacity (4-8 students per section)
+- Random seed (42) ensures reproducible test data
+
 Two sample scenarios are covered:
 
 * Sarah Ahmed is a second‑year engineering student.  She is already
@@ -39,6 +161,7 @@ records.
 """
 
 import uuid
+import random
 from uuid import UUID
 from datetime import date, datetime, time, timedelta, timezone
 from sqlalchemy.orm import Session
@@ -57,10 +180,14 @@ def _tsrange(start: time, end: time) -> str:
 
     The ``section_meeting`` table uses the ``TSRANGE`` type with
     half‑open intervals.  This helper function produces a string of the
-    form ``[HH:MM,HH:MM)`` which can later be cast to ``TSRANGE`` by
+    form ``[YYYY-MM-DD HH:MM:SS,YYYY-MM-DD HH:MM:SS)`` which can be cast to ``TSRANGE`` by
     the database layer.
     """
-    return f"[{start.strftime('%H:%M')},{end.strftime('%H:%M')})"
+    # Use a dummy date for the timestamp format required by PostgreSQL TSRANGE
+    dummy_date = "2025-01-01"
+    start_ts = f"{dummy_date} {start.strftime('%H:%M:%S')}"
+    end_ts = f"{dummy_date} {end.strftime('%H:%M:%S')}"
+    return f"[{start_ts},{end_ts})"
 
 
 
@@ -209,8 +336,8 @@ def get_seed_data() -> dict:
     # Engineering courses and foundation courses: introductory course (ENGR101) and
     # more advanced course (ENGR201), plus foundational courses CS101, PHYS101,
     # MATH101, PROB101, and STAT101. ENGR201 requires ENGR101 as a prerequisite.
-    course_a_id = _uuid()  # ENGR101
-    course_b_id = _uuid()  # ENGR201
+    course_engr101_id = _uuid()  # ENGR101
+    course_engr201_id = _uuid()  # ENGR201
     course_cs101_id = _uuid()  # CS101
     course_phys101_id = _uuid()  # PHYS101
     course_math101_id = _uuid()  # MATH101
@@ -218,7 +345,7 @@ def get_seed_data() -> dict:
     course_stat101_id = _uuid()  # STAT101
     courses = [
         {
-            "course_id": course_a_id,
+            "course_id": course_engr101_id,
             "code": "ENGR101",
             "title": "Introduction to Engineering",
             "credits": 3,
@@ -230,7 +357,7 @@ def get_seed_data() -> dict:
             "campus_id": campus_main_id,
         },
         {
-            "course_id": course_b_id,
+            "course_id": course_engr201_id,
             "code": "ENGR201",
             "title": "Engineering Mechanics",
             "credits": 3,
@@ -307,8 +434,8 @@ def get_seed_data() -> dict:
     # ENGR201 has ENGR101 as a prerequisite.
     course_prereqs = [
         {
-            "course_id": course_b_id,
-            "req_course_id": course_a_id,
+            "course_id": course_engr201_id,
+            "req_course_id": course_engr101_id,
             "type": "prereq",
         },
     ]
@@ -467,15 +594,14 @@ def get_seed_data() -> dict:
     # sections - one that overlaps with Sarah's existing class and one
     # that doesn't conflict.  Each section references the campus
     # and an instructor. New courses have 2+ sections each with high capacity.
-    section_a1_id = _uuid()
-    section_a2_id = _uuid()
-    section_b1_id = _uuid()
-    section_b2_id = _uuid()  # New ENGR201 section on Tuesday
+    section_engr101_1_id = _uuid()
+    section_engr101_2_id = _uuid()
+    section_engr201_1_id = _uuid()
+    section_engr201_2_id = _uuid()  # New ENGR201 section on Tuesday
 
     # CS101 sections
     section_cs101_1_id = _uuid()
     section_cs101_2_id = _uuid()
-    section_cs101_3_id = _uuid()
 
     # PHYS101 sections
     section_phys101_1_id = _uuid()
@@ -484,7 +610,6 @@ def get_seed_data() -> dict:
     # MATH101 sections
     section_math101_1_id = _uuid()
     section_math101_2_id = _uuid()
-    section_math101_3_id = _uuid()
 
     # PROB101 sections
     section_prob101_1_id = _uuid()
@@ -496,8 +621,8 @@ def get_seed_data() -> dict:
 
     sections = [
         {
-            "section_id": section_a1_id,
-            "course_id": course_a_id,
+            "section_id": section_engr101_1_id,
+            "course_id": course_engr101_id,
             "term_id": term_fall_2025_id,
             "section_code": "S01",
             "instructor_id": instructor_ahmad_id,
@@ -506,8 +631,8 @@ def get_seed_data() -> dict:
             "campus_id": campus_main_id,
         },
         {
-            "section_id": section_a2_id,
-            "course_id": course_a_id,
+            "section_id": section_engr101_2_id,
+            "course_id": course_engr101_id,
             "term_id": term_fall_2025_id,
             "section_code": "S02",
             "instructor_id": instructor_layla_id,
@@ -516,8 +641,8 @@ def get_seed_data() -> dict:
             "campus_id": campus_main_id,
         },
         {
-            "section_id": section_b1_id,
-            "course_id": course_b_id,
+            "section_id": section_engr201_1_id,
+            "course_id": course_engr201_id,
             "term_id": term_fall_2025_id,
             "section_code": "S01",
             "instructor_id": instructor_ahmad_id,
@@ -526,8 +651,8 @@ def get_seed_data() -> dict:
             "campus_id": campus_main_id,
         },
         {
-            "section_id": section_b2_id,
-            "course_id": course_b_id,
+            "section_id": section_engr201_2_id,
+            "course_id": course_engr201_id,
             "term_id": term_fall_2025_id,
             "section_code": "S02",  # ENGR201 section S02
             "instructor_id": instructor_layla_id,
@@ -542,8 +667,8 @@ def get_seed_data() -> dict:
             "term_id": term_fall_2025_id,
             "section_code": "S01",
             "instructor_id": instructor_omar_id,
-            "capacity": 60,
-            "waitlist_capacity": 10,
+            "capacity": 30,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
         {
@@ -552,18 +677,8 @@ def get_seed_data() -> dict:
             "term_id": term_fall_2025_id,
             "section_code": "S02",
             "instructor_id": instructor_sara_id,
-            "capacity": 60,
-            "waitlist_capacity": 10,
-            "campus_id": campus_main_id,
-        },
-        {
-            "section_id": section_cs101_3_id,
-            "course_id": course_cs101_id,
-            "term_id": term_fall_2025_id,
-            "section_code": "S03",
-            "instructor_id": instructor_hassan_id,
-            "capacity": 50,
-            "waitlist_capacity": 8,
+            "capacity": 25,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
         # PHYS101 sections
@@ -573,8 +688,8 @@ def get_seed_data() -> dict:
             "term_id": term_fall_2025_id,
             "section_code": "S01",
             "instructor_id": instructor_fatma_id,
-            "capacity": 55,
-            "waitlist_capacity": 10,
+            "capacity": 25,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
         {
@@ -583,8 +698,8 @@ def get_seed_data() -> dict:
             "term_id": term_fall_2025_id,
             "section_code": "S02",
             "instructor_id": instructor_kareem_id,
-            "capacity": 55,
-            "waitlist_capacity": 10,
+            "capacity": 30,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
         # MATH101 sections
@@ -594,8 +709,8 @@ def get_seed_data() -> dict:
             "term_id": term_fall_2025_id,
             "section_code": "S01",
             "instructor_id": instructor_omar_id,
-            "capacity": 70,
-            "waitlist_capacity": 15,
+            "capacity": 25,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
         {
@@ -604,18 +719,8 @@ def get_seed_data() -> dict:
             "term_id": term_fall_2025_id,
             "section_code": "S02",
             "instructor_id": instructor_sara_id,
-            "capacity": 70,
-            "waitlist_capacity": 15,
-            "campus_id": campus_main_id,
-        },
-        {
-            "section_id": section_math101_3_id,
-            "course_id": course_math101_id,
-            "term_id": term_fall_2025_id,
-            "section_code": "S03",
-            "instructor_id": instructor_hassan_id,
-            "capacity": 65,
-            "waitlist_capacity": 12,
+            "capacity": 30,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
         # PROB101 sections
@@ -623,10 +728,10 @@ def get_seed_data() -> dict:
             "section_id": section_prob101_1_id,
             "course_id": course_prob101_id,
             "term_id": term_fall_2025_id,
-            "section_code": "01",
+            "section_code": "S01",
             "instructor_id": instructor_fatma_id,
-            "capacity": 45,
-            "waitlist_capacity": 8,
+            "capacity": 30,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
         {
@@ -635,8 +740,8 @@ def get_seed_data() -> dict:
             "term_id": term_fall_2025_id,
             "section_code": "S02",
             "instructor_id": instructor_kareem_id,
-            "capacity": 45,
-            "waitlist_capacity": 8,
+            "capacity": 25,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
         # STAT101 sections
@@ -646,8 +751,8 @@ def get_seed_data() -> dict:
             "term_id": term_fall_2025_id,
             "section_code": "S01",
             "instructor_id": instructor_ahmad_id,
-            "capacity": 50,
-            "waitlist_capacity": 10,
+            "capacity": 30,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
         {
@@ -656,8 +761,8 @@ def get_seed_data() -> dict:
             "term_id": term_fall_2025_id,
             "section_code": "S02",
             "instructor_id": instructor_layla_id,
-            "capacity": 50,
-            "waitlist_capacity": 10,
+            "capacity": 25,
+            "waitlist_capacity": 5,
             "campus_id": campus_main_id,
         },
     ]
@@ -671,7 +776,7 @@ def get_seed_data() -> dict:
         # ENGR101 A1 - Monday meeting
         {
             "meeting_id": _uuid(),
-            "section_id": section_a1_id,
+            "section_id": section_engr101_1_id,
             "activity": "LEC",
             "day_of_week": 0,  # Monday (Python weekday: Monday=0)
             "time_range": _tsrange(time(10, 0), time(11, 30)),
@@ -680,7 +785,7 @@ def get_seed_data() -> dict:
         # ENGR101 A1 - Wednesday meeting
         {
             "meeting_id": _uuid(),
-            "section_id": section_a1_id,
+            "section_id": section_engr101_1_id,
             "activity": "LEC",
             "day_of_week": 2,  # Wednesday (Python weekday: Wednesday=2)
             "time_range": _tsrange(time(14, 0), time(15, 30)),
@@ -689,7 +794,7 @@ def get_seed_data() -> dict:
         # ENGR101 A2 - Wednesday (unchanged for now)
         {
             "meeting_id": _uuid(),
-            "section_id": section_a2_id,
+            "section_id": section_engr101_2_id,
             "activity": "LEC",
             "day_of_week": 2,  # Wednesday (Python weekday: Wednesday=2)
             "time_range": _tsrange(time(14, 0), time(15, 15)),
@@ -698,7 +803,7 @@ def get_seed_data() -> dict:
         # ENGR201 B1 - Monday (conflicting section)
         {
             "meeting_id": _uuid(),
-            "section_id": section_b1_id,
+            "section_id": section_engr201_1_id,
             "activity": "LEC",
             "day_of_week": 0,  # Monday (Python weekday: Monday=0)
             "time_range": _tsrange(time(10, 30), time(12, 0)),
@@ -707,7 +812,7 @@ def get_seed_data() -> dict:
         # ENGR201 A2 - Tuesday (non-conflicting alternative)
         {
             "meeting_id": _uuid(),
-            "section_id": section_b2_id,
+            "section_id": section_engr201_2_id,
             "activity": "LEC",
             "day_of_week": 1,  # Tuesday (Python weekday: Tuesday=1)
             "time_range": _tsrange(time(9, 30), time(11, 0)),
@@ -732,15 +837,6 @@ def get_seed_data() -> dict:
             "day_of_week": 1,  # Tuesday (Python weekday: Tuesday=1)
             "time_range": _tsrange(time(13, 0), time(14, 30)),
             "room_id": room_pasteur_id,
-        },
-        # CS101-03 - Thursday 10:00-12:00 (2 hours)
-        {
-            "meeting_id": _uuid(),
-            "section_id": section_cs101_3_id,
-            "activity": "LEC",
-            "day_of_week": 3,  # Thursday (Python weekday: Thursday=3)
-            "time_range": _tsrange(time(10, 0), time(12, 0)),
-            "room_id": room_galileo_id,
         },
 
         # PHYS101 sections
@@ -781,15 +877,6 @@ def get_seed_data() -> dict:
             "day_of_week": 1,  # Tuesday (Python weekday: Tuesday=1)
             "time_range": _tsrange(time(14, 30), time(16, 30)),
             "room_id": room_mendel_id,
-        },
-        # MATH101-03 - Thursday 13:00-14:30 (1.5 hours)
-        {
-            "meeting_id": _uuid(),
-            "section_id": section_math101_3_id,
-            "activity": "LEC",
-            "day_of_week": 3,  # Thursday (Python weekday: Thursday=3)
-            "time_range": _tsrange(time(13, 0), time(14, 30)),
-            "room_id": room_bohr_id,
         },
 
         # PROB101 sections
@@ -833,76 +920,89 @@ def get_seed_data() -> dict:
         },
     ]
     # ------------------------------------------------------------------
-    # Initial enrollments
-    # Create realistic enrollment numbers for all sections.
-    # Sarah is enrolled in ENGR101 A1, plus additional students to reach
-    # 25-75% capacity in each section for realistic testing.
+    # Generate additional students for enrollment
+    # Calculate how many total students we need for 15-25% enrollment in each section
+    section_capacities = [
+        (section_engr101_1_id, 30),    # ENGR101 S01
+        (section_engr101_2_id, 30),    # ENGR101 S02
+        (section_engr201_1_id, 30),    # ENGR201 S01
+        (section_engr201_2_id, 25),    # ENGR201 S02
+        (section_cs101_1_id, 30),    # CS101 S01
+        (section_cs101_2_id, 25),    # CS101 S02
+        (section_phys101_1_id, 25),  # PHYS101 S01
+        (section_phys101_2_id, 30),  # PHYS101 S02
+        (section_math101_1_id, 25),  # MATH101 S01
+        (section_math101_2_id, 30),  # MATH101 S02
+        (section_prob101_1_id, 30),  # PROB101 S01
+        (section_prob101_2_id, 25),  # PROB101 S02
+        (section_stat101_1_id, 30),  # STAT101 S01
+        (section_stat101_2_id, 25),  # STAT101 S02
+    ]
+
+    # Calculate total enrollment needed (15-25% of each section capacity)
+    random.seed(42)  # For reproducible results
+    total_enrollments_needed = 0
+    section_enrollments = []
+
+    for section_id, capacity in section_capacities:
+        min_enrollment = max(1, int(capacity * 0.15))  # At least 1 student
+        max_enrollment = int(capacity * 0.25)
+        target_enrollment = random.randint(min_enrollment, max_enrollment)
+
+        # Account for Sarah being in ENGR101 S01
+        if section_id == section_engr101_1_id:
+            target_enrollment = max(1, target_enrollment - 1)  # Sarah already enrolled
+
+        section_enrollments.append((section_id, target_enrollment))
+        total_enrollments_needed += target_enrollment
+
+    # Generate additional students beyond the original 43
+    additional_students_needed = max(0, total_enrollments_needed - len(additional_student_ids))
+
+    # Add more students to the students list
+    for i in range(additional_students_needed):
+        new_student_id = _uuid()
+        students.append({
+            "student_id": new_student_id,
+            "external_sis_id": f"S{1044 + i}",  # Continue from S1043
+            "program_id": program_engineering_id,
+            "campus_id": campus_main_id,
+            "standing": "regular",
+            "student_status": "following_plan",
+            "gpa": round(random.uniform(2.0, 4.0), 1),
+            "credits_completed": random.randint(15, 90),
+            "financial_status": random.choice(["clear", "exempt"]),
+            "study_type": random.choice(["paid", "scholarship"]),
+            "expected_grad_term": None,
+        })
+        additional_student_ids.append(new_student_id)
+
+    # ------------------------------------------------------------------
+    # Initial enrollments with random distribution
     enrollment = [
         # Sarah's enrollment (our main test student)
         {
             "enrollment_id": _uuid(),
             "student_id": student_sarah_id,
-            "section_id": section_a1_id,
+            "section_id": section_engr101_1_id,
             "status": "registered",
             "enrolled_at": now,
         },
     ]
 
-    # Distribute additional students across sections
-    # ENGR101 A1: Sarah + 14 more = 15/30 (50%)
-    # ENGR101 A2: 20/30 (67%)
-    # ENGR201 B1: 9/30 (30%)
-    # ENGR201 A2: 12/25 (48%)
-
+    # Generate enrollments for each section based on calculated targets
     student_idx = 0
-
-    # ENGR101 A1: Add 14 more students (Sarah already enrolled)
-    for _ in range(14):
-        if student_idx < len(additional_student_ids):
-            enrollment.append({
-                "enrollment_id": _uuid(),
-                "student_id": additional_student_ids[student_idx],
-                "section_id": section_a1_id,
-                "status": "registered",
-                "enrolled_at": now - timedelta(days=student_idx % 30),
-            })
-            student_idx += 1
-
-    # ENGR101 A2: Add 20 students
-    for _ in range(20):
-        if student_idx < len(additional_student_ids):
-            enrollment.append({
-                "enrollment_id": _uuid(),
-                "student_id": additional_student_ids[student_idx],
-                "section_id": section_a2_id,
-                "status": "registered",
-                "enrolled_at": now - timedelta(days=student_idx % 30),
-            })
-            student_idx += 1
-
-    # ENGR201 B1: Add 9 students
-    for _ in range(9):
-        if student_idx < len(additional_student_ids):
-            enrollment.append({
-                "enrollment_id": _uuid(),
-                "student_id": additional_student_ids[student_idx],
-                "section_id": section_b1_id,
-                "status": "registered",
-                "enrolled_at": now - timedelta(days=student_idx % 30),
-            })
-            student_idx += 1
-
-    # ENGR201 A2: Add 12 students
-    for _ in range(12):
-        if student_idx < len(additional_student_ids):
-            enrollment.append({
-                "enrollment_id": _uuid(),
-                "student_id": additional_student_ids[student_idx],
-                "section_id": section_b2_id,
-                "status": "registered",
-                "enrolled_at": now - timedelta(days=student_idx % 30),
-            })
-            student_idx += 1
+    for section_id, target_enrollment in section_enrollments:
+        for i in range(target_enrollment):
+            if student_idx < len(additional_student_ids):
+                enrollment.append({
+                    "enrollment_id": _uuid(),
+                    "student_id": additional_student_ids[student_idx],
+                    "section_id": section_id,
+                    "status": "registered",
+                    "enrolled_at": now - timedelta(days=random.randint(1, 30)),
+                })
+                student_idx += 1
 
     # ------------------------------------------------------------------
     # Registration requests
@@ -960,7 +1060,13 @@ def _pretty_print(data: dict) -> None:
 
 
 def insert_seed_data():
-    """Insert the seed data into the database."""
+    """Insert the seed data into the database using SQLAlchemy models.
+
+    This function uses the ORM models from models/database.py to ensure
+    consistency with the actual database schema and proper type handling.
+    All foreign key relationships and constraints are respected through
+    the insertion order.
+    """
     from brs_backend.database.connection import engine
     from brs_backend.models.database import (
         Campus, Program, Term, Student, Course, CoursePrereq,
@@ -971,7 +1077,7 @@ def insert_seed_data():
     )
     from sqlalchemy.orm import Session
     import uuid
-    
+
     def convert_uuids_to_strings(data):
         """Convert UUID objects to strings recursively."""
         if isinstance(data, list):
@@ -985,18 +1091,18 @@ def insert_seed_data():
             return str(data)
         else:
             return data
-    
+
     # Get the seed data
     data = get_seed_data()
-    
+
     # Convert all UUIDs to strings
     data = convert_uuids_to_strings(data)
-    
+
     # Table model mapping
     table_models = {
         'campus': Campus,
         'program': Program,
-        'term': Term, 
+        'term': Term,
         'student': Student,
         'course': Course,
         'course_prereq': CoursePrereq,
@@ -1018,47 +1124,31 @@ def insert_seed_data():
         'department_head': DepartmentHead,
         'system_admin': SystemAdmin
     }
-    
+
     with Session(engine) as session:
         # Insert data in order to respect foreign key constraints
         insert_order = [
             'campus', 'program', 'term', 'student', 'course', 'course_prereq',
-            'campus_room', 'instructor', 'instructor_schedule', 'section', 
-            'section_meeting', 'enrollment', 'registration_request', 
+            'campus_room', 'instructor', 'instructor_schedule', 'section',
+            'section_meeting', 'enrollment', 'registration_request',
             'request_decision', 'request_conflict', 'calendar_event',
             'calendar_binding', 'student_preference', 'student_signal',
             'recommendation', 'recommendation_feedback', 'department_head',
             'system_admin'
         ]
-        
+
         for table_name in insert_order:
             if table_name in data and table_name in table_models:
                 model_class = table_models[table_name]
                 rows = data[table_name]
-                
+
                 print(f"Inserting {len(rows)} rows into {table_name}...")
-                
+
                 for row_data in rows:
-                    # Special handling for section_meeting time_range
-                    if table_name == 'section_meeting' and 'time_range' in row_data:
-                        time_range = row_data['time_range']
-                        if time_range and time_range.startswith('[') and time_range.endswith(')'):
-                            # Convert [10:00,11:30) to proper PostgreSQL timestamp format
-                            times = time_range.strip('[]()').split(',')
-                            if len(times) == 2:
-                                start = times[0].strip()
-                                end = times[1].strip()
-                                # Add seconds if not present
-                                if len(start.split(':')) == 2:
-                                    start += ':00'
-                                if len(end.split(':')) == 2:
-                                    end += ':00'
-                                row_data['time_range'] = f'[{start},{end})'
-                    
                     # Create model instance from dictionary
                     instance = model_class(**row_data)
                     session.add(instance)
-                
+
                 try:
                     session.commit()
                     print(f"  ✓ Successfully inserted {len(rows)} {table_name} records")
@@ -1066,14 +1156,14 @@ def insert_seed_data():
                     session.rollback()
                     print(f"  ✗ Error inserting {table_name}: {e}")
                     # Continue with other tables
-                    
+
         print("Seed data insertion completed!")
 
 
 if __name__ == "__main__":  # pragma: no cover
     seed = get_seed_data()
     _pretty_print(seed)
-    
+
     # Insert the data into the database
     print("\nInserting data into database...")
     insert_seed_data()

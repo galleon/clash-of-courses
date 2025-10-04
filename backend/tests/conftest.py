@@ -18,10 +18,10 @@ from brs_backend.models.database import Base  # noqa: E402
 def test_database_url():
     """Create a temporary PostgreSQL test database for the test session."""
     test_db_name = f"test_brs_{str(uuid.uuid4()).replace('-', '_')}"
-    
+
     # Connect to PostgreSQL to create the test database
     admin_engine = create_engine("postgresql://postgres:postgres@db:5432/postgres")
-    
+
     try:
         # Create test database
         with admin_engine.connect() as conn:
@@ -29,15 +29,15 @@ def test_database_url():
             conn.execute(text("COMMIT"))
             conn.execute(text(f"CREATE DATABASE {test_db_name}"))
             print(f"✅ Created test database: {test_db_name}")
-        
+
         # Return the test database URL
         test_db_url = f"postgresql://postgres:postgres@db:5432/{test_db_name}"
-        
+
         # Set environment variable for the app
         os.environ["DATABASE_URL"] = test_db_url
-        
+
         yield test_db_url
-        
+
     finally:
         # Clean up: drop the test database
         try:

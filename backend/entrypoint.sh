@@ -34,9 +34,12 @@ Base.metadata.create_all(bind=engine)
 print('Tables recreated successfully!')
 "
 
-# Seed the database with fresh data
-echo "Seeding database with personas and users..."
+# Seed the database with fresh data using SQLAlchemy models
+echo "Seeding database with personas and users using SQLAlchemy models..."
+echo "- Using models from models/database.py for schema consistency"
+echo "- Seeding personas (students, courses, sections, enrollments)..."
 cd /app && python -m brs_backend.seed_personas || true
+echo "- Seeding users (authentication records)..."
 cd /app && python -m brs_backend.seed_users || true
 
 echo "Starting backend service..."

@@ -228,11 +228,8 @@ function CardRenderer({ cards }) {
                     case 'request_summary':
                         return <RequestSummary key={i} payload={card.payload} />;
                     default:
-                        return (
-                            <div key={i} className="bg-gray-100 border rounded p-3 my-2">
-                                <pre className="text-xs">{JSON.stringify(card, null, 2)}</pre>
-                            </div>
-                        );
+                        // Hide unknown card types instead of showing JSON
+                        return null;
                 }
             })}
         </>

@@ -1,7 +1,7 @@
 # Test Scenario: Successfully Tested End-to-End Workflow
 
 This document outlines the successfully tested scenario that demonstrates
-the complete course registration workflow with conflict detection and 
+the complete course registration workflow with conflict detection and
 automatic alternative enrollment. The system has been validated to work
 properly with the following sequence.
 
@@ -58,7 +58,7 @@ The following scenario has been **successfully tested and validated**:
 - No container overlap issues
 - Proper day names and time slots displayed
 
-### ✅ Section Code Standardization  
+### ✅ Section Code Standardization
 - All sections use consistent Sxx format (S01, S02, S03)
 - Proper section identification and scheduling
 
@@ -74,7 +74,7 @@ Total: 2 courses, 6 credits, no schedule conflicts.
 ## Key Business Rules Validated
 
 1. **Prerequisite Enforcement**: ENGR201 properly rejected when ENGR101 not completed
-2. **Conflict Detection**: CS101 S01 conflict with ENGR101 S01 detected  
+2. **Conflict Detection**: CS101 S01 conflict with ENGR101 S01 detected
 3. **Alternative Enrollment**: Automatic enrollment in CS101 S02 when S01 conflicts
 4. **Schedule Management**: Clean week calendar display with proper course information
 ## Original Development Scenario (For Reference)
