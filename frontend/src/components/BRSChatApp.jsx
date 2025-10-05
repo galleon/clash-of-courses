@@ -396,8 +396,8 @@ function BRSChatApp() {
                         {events.filter(e => e.type === 'user' || e.type === 'assistant').map((event, i) => (
                             <div key={i} className={`flex ${event.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${event.type === 'user'
-                                        ? 'bg-blue-500 text-white'
-                                        : 'bg-gray-200 text-gray-800'
+                                    ? 'bg-blue-500 text-white'
+                                    : 'bg-gray-200 text-gray-800'
                                     }`}>
                                     {event.type === 'user' ? (
                                         <p>{event.data}</p>

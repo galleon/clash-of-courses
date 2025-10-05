@@ -1,6 +1,6 @@
 """Utility functions for the application."""
 
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def create_tool_response(

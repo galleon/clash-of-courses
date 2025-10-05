@@ -4,7 +4,7 @@ import asyncio
 import uuid
 import logging
 from datetime import datetime, timezone
-from typing import Any, Dict, Optional
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Header, Query
 from fastapi.responses import StreamingResponse
@@ -28,12 +28,9 @@ from brs_backend.api.chat_models import (
     ChatAction,
     ActionType,
 )
-from brs_backend.agents.chat_agent import BRSChatAgent
+from brs_backend.agents.student_agent import process_student_request
 
 logger = logging.getLogger(__name__)
-
-# Initialize the chat agent
-chat_agent = BRSChatAgent()
 
 
 class JWTClaims(BaseModel):
@@ -45,9 +42,6 @@ class JWTClaims(BaseModel):
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
-
-# Add debug logging for router registration
-# Chat router initialized
 
 
 def get_current_user(
@@ -108,7 +102,9 @@ async def send_chat_message(
     db: Session = Depends(get_db),  # noqa: B008
 ):
     """Send a message to the chat agent and get a response."""
-    logger.info(f"Chat endpoint called: '{request.message}' from {current_user.full_name}")
+    logger.info(
+        f"Chat endpoint called: '{request.message}' from {current_user.full_name}"
+    )
     logger.info(
         f"💬 Received message: '{request.message}' from user {current_user.full_name} ({current_user.user_type})"
     )
@@ -136,7 +132,9 @@ async def send_chat_message(
     )
 
     if existing_message:
-        logger.debug(f"Returning cached response for idempotency key: {request.client_idempotency_key}")
+        logger.debug(
+            f"Returning cached response for idempotency key: {request.client_idempotency_key}"
+        )
         # Return existing response
         return ChatMessageResponse(
             message_id=str(existing_message.message_id),
@@ -163,23 +161,61 @@ async def send_chat_message(
     correlation_id = str(uuid.uuid4())
 
     logger.info(
-        f"🤖 Processing message with SmolAgents for role: {current_user.user_type}"
+        f"🤖 Processing message with LangGraph for role: {current_user.user_type}"
     )
 
     try:
-        reply = await chat_agent.process_message(
-            message=request.message,
-            user_claims=current_user,
-            session_id=request.session_id,
-            correlation_id=correlation_id,
-            db=db,
-        )
+        # Use LangGraph agent for students, fallback for other roles
+        if current_user.user_type == "student":
+            # Get conversation history for context
+            conversation_history = (
+                db.query(ChatMessage)
+                .filter(ChatMessage.session_id == session.session_id)
+                .order_by(ChatMessage.created_at)
+                .limit(10)  # Last 10 messages for context
+                .all()
+            )
+
+            history = []
+            for msg in conversation_history:
+                history.append({"role": msg.role, "content": msg.content})
+
+            # Process with LangGraph student agent
+            agent_response = process_student_request(
+                message=request.message,
+                student_id=current_user.actor_id,
+                conversation_history=history,
+            )
+
+            # Convert to ChatReply format
+            reply = ChatReply(
+                message=agent_response["response"],
+                audit=ChatAudit(
+                    correlation_id=correlation_id,
+                    user_type=current_user.user_type,
+                    actor_id=current_user.actor_id,
+                    timestamp=datetime.now(timezone.utc),
+                ),
+                cards=[],  # LangGraph responses are text-based for now
+                actions=[],
+            )
+        else:
+            # Fallback for non-student roles - simple response
+            reply = ChatReply(
+                message="I'm currently optimized for student interactions. For advisor and department functions, please use the direct interface.",
+                audit=ChatAudit(
+                    correlation_id=correlation_id,
+                    user_type=current_user.user_type,
+                    actor_id=current_user.actor_id,
+                    timestamp=datetime.now(timezone.utc),
+                ),
+                cards=[],
+                actions=[],
+            )
 
         logger.info(f"✅ Agent response: '{reply.message[:100]}...'")
 
         # Save assistant response
-        from datetime import datetime
-
         # Convert audit data to JSON-serializable format
         audit_dict = reply.audit.model_dump()
         # Manually convert datetime to ISO format string

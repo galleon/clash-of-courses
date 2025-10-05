@@ -1,10 +1,11 @@
-"""Department head tools for policy decisions and overrides."""
+"""Department head business logic tools for policy decisions and overrides."""
 
 from datetime import datetime
-from typing import Optional
+from typing import Any
 from uuid import UUID
 
-from smolagents import tool
+from langchain_core.tools import tool
+from pydantic import BaseModel, Field
 
 from brs_backend.database.connection import SessionLocal
 from brs_backend.models.database import (
@@ -16,10 +17,77 @@ from brs_backend.models.database import (
 )
 
 
+class DepartmentRequestsResult(BaseModel):
+    """Result structure for department requests query."""
+    success: bool = Field(description="Whether the operation was successful")
+    requests: list[dict[str, Any]] = Field(description="List of department requests")
+    total_count: int = Field(description="Total number of requests")
+    pending_count: int = Field(description="Number of pending requests")
+    error: str | None = Field(description="Error message if operation failed")
+
+
+class CapacityOverrideResult(BaseModel):
+    """Result structure for capacity override operation."""
+    success: bool = Field(description="Whether the override was successful")
+    section_id: str = Field(description="Section ID that was modified")
+    old_capacity: int = Field(description="Previous capacity limit")
+    new_capacity: int = Field(description="New capacity limit")
+    justification: str = Field(description="Justification for the override")
+    impact_analysis: str = Field(description="Analysis of the override impact")
+    error: str | None = Field(description="Error message if operation failed")
+
+
+class FinalApprovalResult(BaseModel):
+    """Result structure for final request approval."""
+    success: bool = Field(description="Whether the approval was processed")
+    request_id: str = Field(description="Request ID that was approved or denied")
+    decision: str = Field(description="Final decision made")
+    reasoning: str = Field(description="Reasoning for the decision")
+    next_steps: str = Field(description="What happens next")
+    precedent_note: str = Field(description="Notes about policy precedent")
+    error: str | None = Field(description="Error message if operation failed")
+
+
+class EnrollmentAnalyticsResult(BaseModel):
+    """Result structure for enrollment analytics."""
+    success: bool = Field(description="Whether analytics were generated")
+    department_id: str = Field(description="Department analyzed")
+    term_id: str = Field(description="Term analyzed")
+    enrollment_summary: dict[str, Any] = Field(description="Overall enrollment metrics")
+    course_analytics: list[dict[str, Any]] = Field(description="Per-course analytics")
+    trends: dict[str, Any] = Field(description="Enrollment trends and patterns")
+    recommendations: list[str] = Field(description="Strategic recommendations")
+    error: str | None = Field(description="Error message if operation failed")
+
+
+class PolicyExceptionResult(BaseModel):
+    """Result structure for policy exception management."""
+    success: bool = Field(description="Whether the exception was processed")
+    request_id: str = Field(description="Request requiring exception")
+    exception_type: str = Field(description="Type of exception granted")
+    decision: str = Field(description="Exception decision")
+    justification: str = Field(description="Justification for exception")
+    policy_impact: str = Field(description="Impact on departmental policies")
+    documentation: str = Field(description="Required documentation")
+    error: str | None = Field(description="Error message if operation failed")
+
+
+class ScheduleViewResult(BaseModel):
+    """Result structure for department schedule view."""
+    success: bool = Field(description="Whether schedule was retrieved")
+    department_id: str = Field(description="Department viewed")
+    term_id: str = Field(description="Term viewed")
+    courses: list[dict[str, Any]] = Field(description="Course schedule information")
+    capacity_summary: dict[str, Any] = Field(description="Capacity utilization summary")
+    resource_allocation: dict[str, Any] = Field(description="Resource allocation analysis")
+    scheduling_conflicts: list[str] = Field(description="Identified scheduling issues")
+    error: str | None = Field(description="Error message if operation failed")
+
+
 @tool
 def get_department_requests(
     department_id: str, status_filter: str | None = None
-) -> dict:
+) -> DepartmentRequestsResult:
     """Get registration requests requiring department-level review.
 
     Args:
@@ -108,19 +176,26 @@ def get_department_requests(
 
             requests_data.append(request_data)
 
-        return {
-            "success": True,
-            "data": {"count": len(requests), "requests": requests_data},
-        }
+        pending_count = sum(1 for req in requests_data if req["state"] in ["pending_department", "referred"])
+
+        db.close()
+
+        return DepartmentRequestsResult(
+            success=True,
+            requests=requests_data,
+            total_count=len(requests_data),
+            pending_count=pending_count,
+            error=None
+        )
 
     except Exception as e:
-        return {
-            "success": False,
-            "error": f"Error getting department requests: {str(e)}",
-            "data": None,
-        }
-    finally:
-        db.close()
+        return DepartmentRequestsResult(
+            success=False,
+            requests=[],
+            total_count=0,
+            pending_count=0,
+            error=f"Error getting department requests: {str(e)}"
+        )
 
 
 @tool
@@ -235,7 +310,7 @@ def final_approve_request(
 
 
 @tool
-def get_enrollment_analytics(department_id: str, term_id: str | None = None) -> dict:
+def get_enrollment_analytics(department_id: str, term_id: str | None = None) -> EnrollmentAnalyticsResult:
     """Generate enrollment analytics for department courses.
 
     Args:
@@ -359,7 +434,7 @@ def manage_policy_exception(
 
 
 @tool
-def view_department_schedule(department_id: str, term_id: str | None = None) -> dict:
+def view_department_schedule(department_id: str, term_id: str | None = None) -> ScheduleViewResult:
     """View complete department schedule with room and instructor assignments.
 
     Args:

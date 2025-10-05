@@ -19,15 +19,25 @@ brs_prototype/
 │   │   ├── main.py    # FastAPI app entry point
 │   │   ├── core/      # Configuration and logging
 │   │   ├── database/  # Database connection
-│   │   ├── models/    # SQLAlchemy models
-│   │   ├── agents/    # AI agents and tools
+│   │   ├── models/    # SQLAlchemy models (Python 3.11+ typing)
+│   │   ├── agents/    # LangGraph AI agents and tools (modernized)
+│   │   │   ├── student_agent.py     # Student LangGraph orchestration
+│   │   │   ├── student_tools.py     # Student business logic (6 tools)
+│   │   │   ├── advisor_agent.py     # Advisor LangGraph orchestration
+│   │   │   ├── advisor_tools.py     # Advisor business logic (6 tools)
+│   │   │   ├── department_agent.py  # Department LangGraph orchestration
+│   │   │   └── department_tools.py  # Department business logic (6 tools)
 │   │   ├── api/       # REST API endpoints
 │   │   ├── auth/      # JWT authentication
 │   │   ├── chat/      # Chat system integration
 │   │   ├── services/  # Business logic services
 │   │   └── seed_personas.py # Database seeding
 │   ├── entrypoint.sh  # Docker container startup
-│   ├── tests/         # Comprehensive test suite (20 tests)
+│   ├── tests/         # Comprehensive test suite (42 tests, 18 agent tools)
+│   │   ├── test_student_tools.py    # Student agent tools tests
+│   │   ├── test_advisor_tools.py    # Advisor agent tools tests
+│   │   ├── test_department_tools.py # Department agent tools tests
+│   │   └── TEST_SUITE_SUMMARY.md    # Test coverage documentation
 │   └── README.md      # Backend documentation
 ├── database/          # SQL schema definitions
 ├── demo/              # Demo assets and video materials
@@ -36,6 +46,33 @@ brs_prototype/
 ├── tests/             # System-wide integration tests
 └── README.md          # You are here
 ```
+
+## Recent Modernization (October 2025)
+
+The BRS prototype has been comprehensively modernized with:
+
+### 🔧 **LangGraph Architecture Migration**
+- **Complete agent redesign**: All AI agents now use modern LangGraph patterns with `create_react_agent`
+- **Clean separation of concerns**: Business logic (tools) separated from orchestration (agents)
+- **Structured returns**: All 18 agent tools use Pydantic models for type-safe responses
+- **Enhanced workflows**: Prerequisite checking, conflict resolution, and room name display
+
+### 🐍 **Python 3.11+ Modernization**
+- **Modern typing syntax**: Complete migration from `typing.Optional`, `typing.List`, `typing.Dict` to built-in `T | None`, `list[T]`, `dict[T]`
+- **Type safety**: Enhanced type annotations throughout the entire codebase
+- **Performance improvements**: Leveraging Python 3.11+ optimizations
+
+### 🧪 **Comprehensive Test Suite**
+- **100% agent tool coverage**: All 18 modernized tools have dedicated unit tests
+- **1,238 lines of test code**: Comprehensive validation with 42 test methods
+- **Mock database sessions**: Proper SQLAlchemy session mocking and lifecycle management
+- **Integration testing**: End-to-end workflow validation within each agent domain
+- **Error handling**: Database failures, validation errors, and edge cases covered
+
+### 📁 **Agent Architecture**
+- **Student Domain**: 6 tools (course search, prerequisites, enrollment requests)
+- **Advisor Domain**: 6 tools (request review, rule explanations, approvals)
+- **Department Domain**: 6 tools (capacity override, analytics, policy exceptions)
 
 ## Quick Start with Docker
 

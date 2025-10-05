@@ -3,7 +3,7 @@
 import jwt
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any
+from typing import Any
 from pydantic import BaseModel
 
 # In production, use environment variables or secret management

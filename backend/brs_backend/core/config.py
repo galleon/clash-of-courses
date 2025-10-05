@@ -1,7 +1,7 @@
 """Core configuration and settings for the BRS backend."""
 
 import os
-from typing import Optional
+from functools import lru_cache
 
 
 class Settings:

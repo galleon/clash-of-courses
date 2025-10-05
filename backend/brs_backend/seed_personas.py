@@ -190,7 +190,6 @@ def _tsrange(start: time, end: time) -> str:
     return f"[{start_ts},{end_ts})"
 
 
-
 import uuid
 from datetime import datetime, date
 import logging
@@ -317,19 +316,21 @@ def get_seed_data() -> dict:
 
     # Add additional students for realistic enrollment numbers
     for i, student_id in enumerate(additional_student_ids):
-        students.append({
-            "student_id": student_id,
-            "external_sis_id": f"S{1004 + i:04d}",
-            "program_id": program_engineering_id,
-            "campus_id": campus_main_id,
-            "standing": "regular",
-            "student_status": "following_plan",
-            "gpa": 2.5 + (i % 20) * 0.1,  # Vary GPAs between 2.5-4.4
-            "credits_completed": 30 + (i % 60),  # Vary credits 30-89
-            "financial_status": "clear",
-            "study_type": "paid",
-            "expected_grad_term": None,
-        })
+        students.append(
+            {
+                "student_id": student_id,
+                "external_sis_id": f"S{1004 + i:04d}",
+                "program_id": program_engineering_id,
+                "campus_id": campus_main_id,
+                "standing": "regular",
+                "student_status": "following_plan",
+                "gpa": 2.5 + (i % 20) * 0.1,  # Vary GPAs between 2.5-4.4
+                "credits_completed": 30 + (i % 60),  # Vary credits 30-89
+                "financial_status": "clear",
+                "study_type": "paid",
+                "expected_grad_term": None,
+            }
+        )
 
     # ------------------------------------------------------------------
     # Courses
@@ -818,7 +819,6 @@ def get_seed_data() -> dict:
             "time_range": _tsrange(time(9, 30), time(11, 0)),
             "room_id": room_darwin_id,
         },
-
         # CS101 sections - distributed across different days and times
         # CS101-01 - Monday 10:30-12:00 (conflicts with ENGR101 S01 Monday 10:00-11:30)
         {
@@ -838,7 +838,6 @@ def get_seed_data() -> dict:
             "time_range": _tsrange(time(13, 0), time(14, 30)),
             "room_id": room_pasteur_id,
         },
-
         # PHYS101 sections
         # PHYS101-01 - Monday 8:00-9:30 (1.5 hours)
         {
@@ -858,7 +857,6 @@ def get_seed_data() -> dict:
             "time_range": _tsrange(time(11, 0), time(13, 0)),
             "room_id": room_hawking_id,
         },
-
         # MATH101 sections
         # MATH101-01 - Sunday 11:30-13:00 (1.5 hours)
         {
@@ -878,7 +876,6 @@ def get_seed_data() -> dict:
             "time_range": _tsrange(time(14, 30), time(16, 30)),
             "room_id": room_mendel_id,
         },
-
         # PROB101 sections
         # PROB101-01 - Monday 12:30-14:30 (2 hours)
         {
@@ -898,7 +895,6 @@ def get_seed_data() -> dict:
             "time_range": _tsrange(time(9, 0), time(10, 30)),
             "room_id": room_tesla_id,
         },
-
         # STAT101 sections
         # STAT101-01 - Sunday 14:00-16:00 (2 hours)
         {
@@ -923,12 +919,12 @@ def get_seed_data() -> dict:
     # Generate additional students for enrollment
     # Calculate how many total students we need for 15-25% enrollment in each section
     section_capacities = [
-        (section_engr101_1_id, 30),    # ENGR101 S01
-        (section_engr101_2_id, 30),    # ENGR101 S02
-        (section_engr201_1_id, 30),    # ENGR201 S01
-        (section_engr201_2_id, 25),    # ENGR201 S02
-        (section_cs101_1_id, 30),    # CS101 S01
-        (section_cs101_2_id, 25),    # CS101 S02
+        (section_engr101_1_id, 30),  # ENGR101 S01
+        (section_engr101_2_id, 30),  # ENGR101 S02
+        (section_engr201_1_id, 30),  # ENGR201 S01
+        (section_engr201_2_id, 25),  # ENGR201 S02
+        (section_cs101_1_id, 30),  # CS101 S01
+        (section_cs101_2_id, 25),  # CS101 S02
         (section_phys101_1_id, 25),  # PHYS101 S01
         (section_phys101_2_id, 30),  # PHYS101 S02
         (section_math101_1_id, 25),  # MATH101 S01
@@ -957,24 +953,28 @@ def get_seed_data() -> dict:
         total_enrollments_needed += target_enrollment
 
     # Generate additional students beyond the original 43
-    additional_students_needed = max(0, total_enrollments_needed - len(additional_student_ids))
+    additional_students_needed = max(
+        0, total_enrollments_needed - len(additional_student_ids)
+    )
 
     # Add more students to the students list
     for i in range(additional_students_needed):
         new_student_id = _uuid()
-        students.append({
-            "student_id": new_student_id,
-            "external_sis_id": f"S{1044 + i}",  # Continue from S1043
-            "program_id": program_engineering_id,
-            "campus_id": campus_main_id,
-            "standing": "regular",
-            "student_status": "following_plan",
-            "gpa": round(random.uniform(2.0, 4.0), 1),
-            "credits_completed": random.randint(15, 90),
-            "financial_status": random.choice(["clear", "exempt"]),
-            "study_type": random.choice(["paid", "scholarship"]),
-            "expected_grad_term": None,
-        })
+        students.append(
+            {
+                "student_id": new_student_id,
+                "external_sis_id": f"S{1044 + i}",  # Continue from S1043
+                "program_id": program_engineering_id,
+                "campus_id": campus_main_id,
+                "standing": "regular",
+                "student_status": "following_plan",
+                "gpa": round(random.uniform(2.0, 4.0), 1),
+                "credits_completed": random.randint(15, 90),
+                "financial_status": random.choice(["clear", "exempt"]),
+                "study_type": random.choice(["paid", "scholarship"]),
+                "expected_grad_term": None,
+            }
+        )
         additional_student_ids.append(new_student_id)
 
     # ------------------------------------------------------------------
@@ -995,13 +995,15 @@ def get_seed_data() -> dict:
     for section_id, target_enrollment in section_enrollments:
         for i in range(target_enrollment):
             if student_idx < len(additional_student_ids):
-                enrollment.append({
-                    "enrollment_id": _uuid(),
-                    "student_id": additional_student_ids[student_idx],
-                    "section_id": section_id,
-                    "status": "registered",
-                    "enrolled_at": now - timedelta(days=random.randint(1, 30)),
-                })
+                enrollment.append(
+                    {
+                        "enrollment_id": _uuid(),
+                        "student_id": additional_student_ids[student_idx],
+                        "section_id": section_id,
+                        "status": "registered",
+                        "enrolled_at": now - timedelta(days=random.randint(1, 30)),
+                    }
+                )
                 student_idx += 1
 
     # ------------------------------------------------------------------
@@ -1069,11 +1071,29 @@ def insert_seed_data():
     """
     from brs_backend.database.connection import engine
     from brs_backend.models.database import (
-        Campus, Program, Term, Student, Course, CoursePrereq,
-        CampusRoom, Instructor, InstructorSchedule, Section, SectionMeeting,
-        Enrollment, RegistrationRequest, RequestDecision, RequestConflict,
-        CalendarEvent, CalendarBinding, StudentPreference, StudentSignal,
-        Recommendation, RecommendationFeedback, DepartmentHead, SystemAdmin
+        Campus,
+        Program,
+        Term,
+        Student,
+        Course,
+        CoursePrereq,
+        CampusRoom,
+        Instructor,
+        InstructorSchedule,
+        Section,
+        SectionMeeting,
+        Enrollment,
+        RegistrationRequest,
+        RequestDecision,
+        RequestConflict,
+        CalendarEvent,
+        CalendarBinding,
+        StudentPreference,
+        StudentSignal,
+        Recommendation,
+        RecommendationFeedback,
+        DepartmentHead,
+        SystemAdmin,
     )
     from sqlalchemy.orm import Session
     import uuid
@@ -1086,7 +1106,7 @@ def insert_seed_data():
             return {key: convert_uuids_to_strings(value) for key, value in data.items()}
         elif isinstance(data, uuid.UUID):
             return str(data)
-        elif hasattr(data, '__class__') and 'UUID' in str(data.__class__):
+        elif hasattr(data, "__class__") and "UUID" in str(data.__class__):
             # Handle SQLAlchemy UUID types and other UUID-like objects
             return str(data)
         else:
@@ -1100,41 +1120,57 @@ def insert_seed_data():
 
     # Table model mapping
     table_models = {
-        'campus': Campus,
-        'program': Program,
-        'term': Term,
-        'student': Student,
-        'course': Course,
-        'course_prereq': CoursePrereq,
-        'campus_room': CampusRoom,
-        'instructor': Instructor,
-        'instructor_schedule': InstructorSchedule,
-        'section': Section,
-        'section_meeting': SectionMeeting,
-        'enrollment': Enrollment,
-        'registration_request': RegistrationRequest,
-        'request_decision': RequestDecision,
-        'request_conflict': RequestConflict,
-        'calendar_event': CalendarEvent,
-        'calendar_binding': CalendarBinding,
-        'student_preference': StudentPreference,
-        'student_signal': StudentSignal,
-        'recommendation': Recommendation,
-        'recommendation_feedback': RecommendationFeedback,
-        'department_head': DepartmentHead,
-        'system_admin': SystemAdmin
+        "campus": Campus,
+        "program": Program,
+        "term": Term,
+        "student": Student,
+        "course": Course,
+        "course_prereq": CoursePrereq,
+        "campus_room": CampusRoom,
+        "instructor": Instructor,
+        "instructor_schedule": InstructorSchedule,
+        "section": Section,
+        "section_meeting": SectionMeeting,
+        "enrollment": Enrollment,
+        "registration_request": RegistrationRequest,
+        "request_decision": RequestDecision,
+        "request_conflict": RequestConflict,
+        "calendar_event": CalendarEvent,
+        "calendar_binding": CalendarBinding,
+        "student_preference": StudentPreference,
+        "student_signal": StudentSignal,
+        "recommendation": Recommendation,
+        "recommendation_feedback": RecommendationFeedback,
+        "department_head": DepartmentHead,
+        "system_admin": SystemAdmin,
     }
 
     with Session(engine) as session:
         # Insert data in order to respect foreign key constraints
         insert_order = [
-            'campus', 'program', 'term', 'student', 'course', 'course_prereq',
-            'campus_room', 'instructor', 'instructor_schedule', 'section',
-            'section_meeting', 'enrollment', 'registration_request',
-            'request_decision', 'request_conflict', 'calendar_event',
-            'calendar_binding', 'student_preference', 'student_signal',
-            'recommendation', 'recommendation_feedback', 'department_head',
-            'system_admin'
+            "campus",
+            "program",
+            "term",
+            "student",
+            "course",
+            "course_prereq",
+            "campus_room",
+            "instructor",
+            "instructor_schedule",
+            "section",
+            "section_meeting",
+            "enrollment",
+            "registration_request",
+            "request_decision",
+            "request_conflict",
+            "calendar_event",
+            "calendar_binding",
+            "student_preference",
+            "student_signal",
+            "recommendation",
+            "recommendation_feedback",
+            "department_head",
+            "system_admin",
         ]
 
         for table_name in insert_order:

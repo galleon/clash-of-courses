@@ -18,11 +18,15 @@ dependencies = [
     "sqlalchemy>=2.0.36",
     "psycopg2-binary>=2.9.9",
     "pydantic>=2.10.0",
-    "smolagents[openai]>=1.21.2",
+    "langgraph>=0.2.0",
+    "langchain-openai>=0.2.0",
+    "langchain-core>=0.3.0",
     "python-multipart>=0.0.12",
     "python-dotenv>=1.0.1",
     "PyJWT>=2.8.0",
     "passlib[bcrypt]>=1.7.4",
+    "icalendar>=6.0.0",
+    "recurring-ical-events>=2.0.0",
 ]
 
 [project.optional-dependencies]

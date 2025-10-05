@@ -1,6 +1,6 @@
 """User authentication and mapping service."""
 
-from typing import Optional, Dict, Any
+from typing import Any
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 

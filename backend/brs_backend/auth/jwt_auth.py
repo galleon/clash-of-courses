@@ -4,7 +4,6 @@ Simple JWT authentication for BRS Chat API
 
 import jwt
 from datetime import datetime, timedelta, UTC
-from typing import Optional
 from fastapi import HTTPException, status, Depends
 from passlib.context import CryptContext
 from sqlalchemy.orm import Session
